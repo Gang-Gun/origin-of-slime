@@ -819,6 +819,54 @@ function initFirebase() {
   }
 }
 
+// ── 순위표: 실시간 로드 ──────────────────────────────
+function initLeaderboard() {
+  initFirebase();
+  if (!_db) return; // Firebase 미설정 시 패널 숨김 유지
+  document.getElementById('leaderboard-panel').style.display = 'flex';
+  _startLeaderboardListener();
+}
+
+function _startLeaderboardListener() {
+  if (!_db) return;
+  if (_lbUnsub) _lbUnsub(); // 기존 구독 해제
+  _lbUnsub = _db.collection('leaderboard')
+    .orderBy('score', 'desc')
+    .limit(10)
+    .onSnapshot(snap => {
+      const list = document.getElementById('leaderboard-list');
+      if (!list) return;
+      if (snap.empty) {
+        list.innerHTML = '<li class="lb-empty">아직 기록이 없어요!</li>';
+        return;
+      }
+      const medals = ['🥇','🥈','🥉'];
+      list.innerHTML = snap.docs.map((doc, i) => {
+        const d = doc.data();
+        const rank = medals[i] || `${i + 1}.`;
+        return `<li>
+          <div class="lb-top">
+            <span class="lb-rank">${rank}</span>
+            <span class="lb-name">${escHtml(d.name || '이름 없음')}</span>
+            <span class="lb-score">${Number(d.score).toLocaleString()}점</span>
+          </div>
+          <div class="lb-sub">세대 ${d.generations ?? '?'} · 돌연변이 ${d.mutations ?? '?'}종 · ${d.date ?? ''}</div>
+        </li>`;
+      }).join('');
+    }, err => {
+      console.warn('[Leaderboard] 구독 오류:', err);
+    });
+}
+
+function stopLeaderboard() {
+  if (_lbUnsub) { _lbUnsub(); _lbUnsub = null; }
+  document.getElementById('leaderboard-panel').style.display = 'none';
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 const WORLD_W = 5000;
 const WORLD_H = 5000;
 const TILE = 80;
@@ -3063,6 +3111,7 @@ class ArenaScene extends Phaser.Scene {
 
 let game = null;
 function startGame() {
+  stopLeaderboard(); // 게임 중엔 순위표 패널 숨김
   if (game) return;
   Audio.init(); Audio.resume(); // 사용자 제스처로 오디오 활성화
   document.getElementById('title-screen').style.display = 'none';
@@ -3633,6 +3682,11 @@ const Tutorial = (() => {
     card.style.top  = `${(vh - (card.offsetHeight || 200)) / 2}px`;
   }
 })();
+
+// 페이지 로드 시 순위표 초기화
+window.addEventListener('DOMContentLoaded', () => {
+  initLeaderboard();
+});
 </script>
 </body>
 </html>
