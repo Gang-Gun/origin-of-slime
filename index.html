@@ -850,7 +850,7 @@ function _startLeaderboardListener() {
             <span class="lb-name">${escHtml(d.name || '이름 없음')}</span>
             <span class="lb-score">${Number(d.score).toLocaleString()}점</span>
           </div>
-          <div class="lb-sub">세대 ${d.generations ?? '?'} · 돌연변이 ${d.mutations ?? '?'}종 · ${d.date ?? ''}</div>
+          <div class="lb-sub">세대 ${escHtml(String(d.generations ?? '?'))} · 돌연변이 ${escHtml(String(d.mutations ?? '?'))}종 · ${escHtml(String(d.date ?? ''))}</div>
         </li>`;
       }).join('');
     }, err => {
