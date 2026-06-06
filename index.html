@@ -1272,7 +1272,7 @@ const GENE_EFFECTS = {
 const MUTATIONS = [
   { id: 'strong_jaw', name: '강한 턱', type: 'good', effects: { attack: 4 } },
   { id: 'fast_legs', name: '빠른 다리', type: 'good', effects: { speed: 25, gather: 1 } },
-  { id: 'keen_sense', name: '예민한 감각', type: 'good', effects: { gather: 4 } },
+  { id: 'regeneration', name: '재생 능력', type: 'good', effects: { hp: 25, defense: 2 } },
   { id: 'efficient_metabolism', name: '효율 대사', type: 'good', effects: { foodNeed: -0.4 } },
   { id: 'poison_gland', name: '독성 분비', type: 'good', effects: { attack: 6 } },
   { id: 'high_fertility', name: '높은 번식력', type: 'dual', effects: { fertility: 0.5, foodNeed: 0.3 } },
@@ -1285,7 +1285,7 @@ const MUTATIONS = [
   { id: 'weak_jaw', name: '약한 턱', type: 'bad', effects: { attack: -4 } },
   { id: 'thin_shell', name: '얇은 껍질', type: 'bad', effects: { hp: -10, defense: -3, speed: 5 } },
   { id: 'slow_legs', name: '느린 다리', type: 'bad', effects: { speed: -20, gather: -1 } },
-  { id: 'dull_sense', name: '둔한 감각', type: 'bad', effects: { gather: -3 } },
+  { id: 'weak_immunity', name: '약한 면역', type: 'bad', effects: { hp: -15, defense: -2, foodNeed: 0.2 } },
   { id: 'low_fertility', name: '낮은 번식력', type: 'bad', effects: { fertility: -0.4 } },
   { id: 'frail_body', name: '약한 체질', type: 'bad', effects: { hp: -25 } },
   { id: 'timid', name: '겁 많은 성향', type: 'bad', effects: { attack: -2, charm: -3, speed: 5 } },
