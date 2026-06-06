@@ -54,6 +54,46 @@ canvas { display: block; image-rendering: pixelated; }
   backdrop-filter: blur(10px);
 }
 
+/* ─── 순위표 패널 ─── */
+#leaderboard-panel {
+  position: fixed; top: 16px; left: 16px; z-index: 45;
+  width: 220px; max-height: 380px;
+  background: rgba(255,255,255,0.82); backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255,255,255,0.9);
+  border-radius: 16px; padding: 12px 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+  font-family: 'Jua', sans-serif;
+  display: none; /* initLeaderboard()가 표시 제어 */
+  flex-direction: column; gap: 4px;
+  overflow: hidden;
+}
+#leaderboard-panel .lb-title {
+  font-size: 13px; font-weight: 800; color: var(--ink);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 5px;
+}
+#leaderboard-panel .lb-empty {
+  font-size: 11px; color: var(--ink-soft); text-align: center; padding: 8px 0;
+}
+#leaderboard-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+#leaderboard-list li {
+  font-size: 11px; color: var(--ink);
+  padding: 5px 8px; border-radius: 9px;
+  background: rgba(0,0,0,0.04);
+}
+#leaderboard-list li .lb-top { display: flex; justify-content: space-between; align-items: center; }
+#leaderboard-list li .lb-rank { font-size: 13px; font-weight: 900; min-width: 20px; }
+#leaderboard-list li .lb-name { flex: 1; font-weight: 800; margin: 0 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#leaderboard-list li .lb-score { font-weight: 900; color: var(--coral); }
+#leaderboard-list li .lb-sub { font-size: 10px; color: var(--ink-soft); margin-top: 2px; font-family: 'Nunito', sans-serif; }
+#leaderboard-list li:nth-child(1) { background: rgba(255,215,0,0.18); }
+#leaderboard-list li:nth-child(2) { background: rgba(192,192,192,0.18); }
+#leaderboard-list li:nth-child(3) { background: rgba(205,127,50,0.18); }
+
+/* 모바일 작은 화면 대응 */
+@media (max-width: 400px) {
+  #leaderboard-panel { width: 170px; top: 10px; left: 10px; padding: 9px 10px; }
+}
+
 /* ─── 타이틀 ─── */
 #title-screen {
   position: fixed; inset: 0; z-index: 40;
@@ -575,6 +615,13 @@ canvas { display: block; image-rendering: pixelated; }
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
+<!-- 순위표 패널 (타이틀 화면 위에 표시, fixed) -->
+<div id="leaderboard-panel">
+  <div class="lb-title">🏆 명예의 전당</div>
+  <ul id="leaderboard-list">
+    <li class="lb-empty">불러오는 중...</li>
+  </ul>
+</div>
 <div id="title-screen">
   <div class="blob-deco">🫧</div>
   <h1>슬라임의 기원<span class="en">Origin of Slime</span></h1>
