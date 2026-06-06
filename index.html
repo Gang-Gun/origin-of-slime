@@ -96,6 +96,51 @@ canvas { display: block; image-rendering: pixelated; }
   #leaderboard-panel { width: 170px; top: 10px; left: 10px; padding: 9px 10px; }
 }
 
+/* ─── 점수 등록 모달 ─── */
+#score-submit-modal {
+  display: none; position: fixed; inset: 0; z-index: 80;
+  background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+}
+#score-submit-modal.open { display: flex; }
+#score-submit-card {
+  background: #ffffff; border-radius: 20px; padding: 28px 24px;
+  max-width: 320px; width: 90%; text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  animation: popIn .22s ease;
+  font-family: 'Jua', sans-serif;
+}
+#score-submit-card h2 { margin: 0 0 6px; font-size: 20px; }
+#score-submit-card .score-preview {
+  font-size: 28px; font-weight: 900; color: var(--coral);
+  margin: 8px 0 16px;
+}
+#score-submit-card .sub-preview {
+  font-size: 12px; color: var(--ink-soft); margin-bottom: 16px;
+  font-family: 'Nunito', sans-serif;
+}
+#lb-name-input {
+  width: 100%; box-sizing: border-box;
+  padding: 10px 14px; border-radius: 12px;
+  border: 2px solid var(--sky-dk); font-size: 16px;
+  font-family: 'Jua', sans-serif; outline: none;
+  margin-bottom: 14px; text-align: center;
+}
+#lb-name-input:focus { border-color: var(--coral); }
+#score-submit-card .btn-row { display: flex; gap: 10px; justify-content: center; }
+#lb-submit-btn {
+  padding: 10px 22px; border-radius: 12px; border: none; cursor: pointer;
+  background: var(--coral); color: #fff; font-size: 15px;
+  font-family: 'Jua', sans-serif; font-weight: 800;
+  box-shadow: 0 4px 0 #b83c2e;
+}
+#lb-submit-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #b83c2e; }
+#lb-skip-btn {
+  padding: 10px 16px; border-radius: 12px; border: 2px solid var(--ink-faint);
+  background: transparent; color: var(--ink-soft); font-size: 14px;
+  font-family: 'Jua', sans-serif; cursor: pointer;
+}
+#lb-feedback { font-size: 13px; color: #22c55e; min-height: 18px; margin-top: 6px; }
+
 /* ─── 타이틀 ─── */
 #title-screen {
   position: fixed; inset: 0; z-index: 40;
@@ -862,6 +907,60 @@ function stopLeaderboard() {
   if (_lbUnsub) { _lbUnsub(); _lbUnsub = null; }
   document.getElementById('leaderboard-panel').style.display = 'none';
 }
+
+// ── 점수 등록 ────────────────────────────────────────
+let _pendingScore = null; // openScoreSubmit() 호출 시 임시 저장
+
+function openScoreSubmit({ score, generations, mutations }) {
+  _pendingScore = { score, generations, mutations };
+  document.getElementById('lb-score-preview').textContent = score.toLocaleString() + '점';
+  document.getElementById('lb-sub-preview').textContent =
+    `세대 ${generations} · 돌연변이 ${mutations}종`;
+  document.getElementById('lb-name-input').value = '';
+  document.getElementById('lb-feedback').textContent = '';
+  document.getElementById('score-submit-modal').classList.add('open');
+  setTimeout(() => document.getElementById('lb-name-input').focus(), 100);
+}
+
+function closeScoreSubmit() {
+  document.getElementById('score-submit-modal').classList.remove('open');
+  _pendingScore = null;
+}
+
+async function submitScoreFromModal() {
+  if (!_pendingScore || !_db) { closeScoreSubmit(); return; }
+  const name = document.getElementById('lb-name-input').value.trim();
+  if (!name) {
+    document.getElementById('lb-feedback').textContent = '이름을 입력해주세요!';
+    return;
+  }
+  document.getElementById('lb-submit-btn').disabled = true;
+  try {
+    const now = new Date();
+    const date = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+    await _db.collection('leaderboard').add({
+      name,
+      score:       _pendingScore.score,
+      generations: _pendingScore.generations,
+      mutations:   _pendingScore.mutations,
+      date,
+      timestamp:   firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    document.getElementById('lb-feedback').textContent = '✅ 등록 완료!';
+    setTimeout(() => closeScoreSubmit(), 1200);
+  } catch (e) {
+    console.warn('[Leaderboard] 등록 실패:', e);
+    document.getElementById('lb-feedback').textContent = '등록에 실패했습니다.';
+    document.getElementById('lb-submit-btn').disabled = false;
+  }
+}
+
+// Enter 키로 등록
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('score-submit-modal').classList.contains('open')) {
+    submitScoreFromModal();
+  }
+});
 
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -3688,5 +3787,19 @@ window.addEventListener('DOMContentLoaded', () => {
   initLeaderboard();
 });
 </script>
+<!-- 점수 등록 모달 -->
+<div id="score-submit-modal">
+  <div id="score-submit-card">
+    <h2>🏆 기록 등록</h2>
+    <div class="score-preview" id="lb-score-preview"></div>
+    <div class="sub-preview" id="lb-sub-preview"></div>
+    <input id="lb-name-input" type="text" maxlength="12" placeholder="이름을 입력하세요" autocomplete="off" />
+    <div class="btn-row">
+      <button id="lb-submit-btn" type="button" onclick="submitScoreFromModal()">등록</button>
+      <button id="lb-skip-btn" type="button" onclick="closeScoreSubmit()">건너뛰기</button>
+    </div>
+    <div id="lb-feedback"></div>
+  </div>
+</div>
 </body>
 </html>
