@@ -65,7 +65,9 @@ canvas { display: block; image-rendering: pixelated; }
   font-family: 'Jua', sans-serif;
   display: none; /* initLeaderboard()가 표시 제어 */
   flex-direction: column; gap: 4px;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.2) transparent;
 }
 #leaderboard-panel .lb-title {
   font-size: 13px; font-weight: 800; color: var(--ink);
@@ -608,6 +610,7 @@ canvas { display: block; image-rendering: pixelated; }
   /* 이벤트 메시지: 중앙 하단 */
   #event-message { top: 55%; font-size: 13px; padding: 12px 16px; width: min(280px, 55vw); }
   #event-message.tutorial-mode { top: 74%; }
+  #leaderboard-panel { max-height: 180px; width: 185px; font-size: 10px; top: 8px; left: 8px; padding: 8px 10px; }
 }
 </style>
   <!-- Firebase SDK (순위표용) -->
