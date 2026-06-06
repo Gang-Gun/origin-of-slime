@@ -742,6 +742,8 @@ canvas { display: block; image-rendering: pixelated; }
 
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 <script>
+'use strict';
+
 // ══════════════════════════════════════════════════════
 // ▶ Firebase 설정 — Firebase Console에서 발급받은 값으로 교체
 // ══════════════════════════════════════════════════════
@@ -766,8 +768,6 @@ function initFirebase() {
     console.warn('[Leaderboard] Firebase init failed:', e);
   }
 }
-
-'use strict';
 
 const WORLD_W = 5000;
 const WORLD_H = 5000;
