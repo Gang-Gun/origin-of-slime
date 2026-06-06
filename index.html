@@ -624,6 +624,21 @@ canvas { display: block; image-rendering: pixelated; }
 #tutorial-arrow { position:absolute; font-size:26px; pointer-events:none; animation:arrowBob .75s ease-in-out infinite; filter:drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
 @keyframes arrowBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
 
+/* ─── 방향 전환 시 HUD 부드러운 전환 ─── */
+#bottom-bar {
+  transition: top 0.35s ease, left 0.35s ease, right 0.35s ease,
+              bottom 0.35s ease, width 0.35s ease, border-radius 0.3s ease,
+              padding 0.3s ease;
+}
+#side-bar {
+  transition: top 0.3s ease, left 0.3s ease;
+}
+#stats {
+  transition: top 0.3s ease, left 0.3s ease, right 0.3s ease, width 0.3s ease;
+}
+#hud.orient-fade { opacity: 0; transition: opacity 0.15s ease; }
+#hud { transition: opacity 0.2s ease; }
+
 /* ─── 세로 모바일 ─── */
 @media (max-width: 520px) {
   #top-bar { gap: 4px; padding: 7px 7px 0; }
@@ -2012,6 +2027,8 @@ class ArenaScene extends Phaser.Scene {
 
     this.setupJoystick();
     this.setupKeyboard();
+    // 방향 전환 시 Phaser 카메라 뷰포트 자동 갱신
+    this.scale.on('resize', this._onSceneResize, this);
     document.getElementById('breed-btn').addEventListener('click', () => this.handleBreed());
     document.getElementById('flee-btn').addEventListener('click', () => this.handleFlee());
     this.showMessage('🌱 슬라임 집단을 이끌고\n먹이를 모으세요!');
@@ -2337,6 +2354,16 @@ class ArenaScene extends Phaser.Scene {
 
   hideJoystickDom() {
     document.getElementById('joystick-dom').style.display = 'none';
+  }
+
+  // 방향 전환 / 리사이즈 시 Phaser 씬 내부 정리
+  _onSceneResize(gameSize) {
+    // 카메라는 자동으로 새 뷰포트에 맞게 갱신됨
+    // 활성 조이스틱만 취소
+    if (this.joystick?.active) {
+      Object.assign(this.joystick, { active: false, pointerId: null, knobX: 0, knobY: 0, dirX: 0, dirY: 0 });
+      this.hideJoystickDom();
+    }
   }
 
   setupKeyboard() {
@@ -3588,8 +3615,39 @@ function toggleSfxSetting(btn) {
   if (muteBtn) muteBtn.textContent = muted ? '🔇' : '🔊';
 }
 
-window.addEventListener('resize', () => {
+/* ── 방향 전환 / 리사이즈 처리 ───────────────────────────────────── */
+let _orientTimer = null;
+
+function _cancelJoystick() {
+  const sc = window._arenaScene;
+  if (!sc?.joystick?.active) return;
+  Object.assign(sc.joystick, { active: false, pointerId: null, knobX: 0, knobY: 0, dirX: 0, dirY: 0 });
+  const dom = document.getElementById('joystick-dom');
+  if (dom) dom.style.display = 'none';
+}
+
+function _applyResize() {
   if (game) game.scale.resize(window.innerWidth, window.innerHeight);
+}
+
+// 일반 resize (데스크톱 창 크기 변경 + 모바일 기본)
+window.addEventListener('resize', () => {
+  _cancelJoystick();
+  _applyResize();
+});
+
+// orientationchange: iOS는 이 이벤트 직후 window.innerWidth/Height 가
+// 아직 새 값으로 갱신되지 않을 수 있어 300ms 후 재적용
+window.addEventListener('orientationchange', () => {
+  _cancelJoystick();
+  // HUD를 잠시 페이드아웃해 레이아웃 점프를 자연스럽게 숨김
+  const hud = document.getElementById('hud');
+  if (hud && hud.style.display !== 'none') hud.classList.add('orient-fade');
+  clearTimeout(_orientTimer);
+  _orientTimer = setTimeout(() => {
+    _applyResize();
+    if (hud) hud.classList.remove('orient-fade');
+  }, 320);
 });
 
 // ════════════════════════════════════════════
