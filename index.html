@@ -917,6 +917,7 @@ function openScoreSubmit({ score, generations, mutations }) {
   document.getElementById('lb-sub-preview').textContent =
     `세대 ${generations} · 돌연변이 ${mutations}종`;
   document.getElementById('lb-name-input').value = '';
+  document.getElementById('lb-submit-btn').disabled = false;
   document.getElementById('lb-feedback').textContent = '';
   document.getElementById('score-submit-modal').classList.add('open');
   setTimeout(() => document.getElementById('lb-name-input').focus(), 100);
@@ -928,6 +929,7 @@ function closeScoreSubmit() {
 }
 
 async function submitScoreFromModal() {
+  if (document.getElementById('lb-submit-btn').disabled) return;
   if (!_pendingScore || !_db) { closeScoreSubmit(); return; }
   const name = document.getElementById('lb-name-input').value.trim();
   if (!name) {
