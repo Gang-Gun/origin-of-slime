@@ -1967,6 +1967,8 @@ class ArenaScene extends Phaser.Scene {
     this.achievements = new Set();
     // 게임 중 획득한 돌연변이 추적
     this.gainedMutationsThisGame = new Set();
+    // 지형별 이벤트 발생 횟수 추적
+    this.terrainEventCount = {};
     this.achieveData = {
       hadNeardeath: false,   // 3마리 이하로 떨어진 적 있는지
       volcanoWin: false,     // 화산지대에서 전쟁 승리
@@ -2623,6 +2625,8 @@ class ArenaScene extends Phaser.Scene {
   }
 
   applyTerrainEvent(targetTerrain, event) {
+    // 지형별 이벤트 횟수 누적
+    this.terrainEventCount[targetTerrain.id] = (this.terrainEventCount[targetTerrain.id] || 0) + 1;
     let playerDeaths = 0;
     let totalDeaths = 0;
     let playerAffected = false;
@@ -3171,6 +3175,23 @@ class ArenaScene extends Phaser.Scene {
       </div>`;
     }).join('');
 
+    // 최다 이벤트 지형 계산
+    const eventEntries = Object.entries(this.terrainEventCount || {});
+    let hotTerrainHtml = '<div class="row"><span class="label">이벤트 없음</span></div>';
+    if (eventEntries.length) {
+      eventEntries.sort((a, b) => b[1] - a[1]);
+      const [topId, topCount] = eventEntries[0];
+      const topTerrain = TERRAIN[topId];
+      const topName = topTerrain ? `${topTerrain.ico} ${topTerrain.name}` : topId;
+      const rows = eventEntries.slice(0, 4).map(([id, cnt]) => {
+        const t = TERRAIN[id];
+        const label = t ? `${t.ico} ${t.name}` : id;
+        const bar = '█'.repeat(Math.round(cnt / topCount * 8)).padEnd(8, '░');
+        return `<div class="row"><span>${label}</span><strong>${cnt}회 <span style="font-family:monospace;font-size:10px;color:var(--ink-soft)">${bar}</span></strong></div>`;
+      });
+      hotTerrainHtml = rows.join('');
+    }
+
     // 돌연변이 결과
     const finalMutFreq = byMeteor ? (this.savedMeteorMutFreq || {}) : group.mutationFrequency();
     const gainedList = [...this.gainedMutationsThisGame].map(id => mutationById(id)).filter(Boolean);
@@ -3192,6 +3213,10 @@ class ArenaScene extends Phaser.Scene {
         <div class="row"><span>포섭 / 빼앗김</span>
           <span><strong class="good">+${group.recruited}</strong> / <strong class="bad">-${group.recruitedAway}</strong></span>
         </div>
+      </div>
+
+      <div class="result-card"><h2>🗺️ 지형별 이벤트 발생</h2>
+        ${hotTerrainHtml}
       </div>
 
       <div class="result-card"><h2>🧬 유전자 풀 변화 <small style="font-size:11px;color:var(--ink-soft);font-family:Nunito">(초기 50% 기준)</small></h2>
