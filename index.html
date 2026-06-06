@@ -3214,7 +3214,7 @@ class ArenaScene extends Phaser.Scene {
       <div style="text-align:center;margin-top:12px">
         <button class="big-btn sky" type="button"
           style="font-size:14px;padding:10px 24px"
-          onclick="window._arenaScene && openScoreSubmit(window._arenaScene._endScoreData)">
+          onclick="window._arenaScene?._endScoreData && openScoreSubmit(window._arenaScene._endScoreData)">
           🏆 기록 등록
         </button>
       </div>`;
