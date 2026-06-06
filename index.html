@@ -57,7 +57,7 @@ canvas { display: block; image-rendering: pixelated; }
 /* ─── 순위표 패널 ─── */
 #leaderboard-panel {
   position: fixed; top: 16px; left: 16px; z-index: 45;
-  width: 220px; max-height: 380px;
+  width: 220px;
   background: rgba(255,255,255,0.82); backdrop-filter: blur(8px);
   border: 1.5px solid rgba(255,255,255,0.9);
   border-radius: 16px; padding: 12px 14px;
@@ -65,13 +65,28 @@ canvas { display: block; image-rendering: pixelated; }
   font-family: 'Jua', sans-serif;
   display: none; /* initLeaderboard()가 표시 제어 */
   flex-direction: column; gap: 4px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.2) transparent;
 }
 #leaderboard-panel .lb-title {
   font-size: 13px; font-weight: 800; color: var(--ink);
-  margin-bottom: 6px; display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+  margin-bottom: 0;
+}
+#leaderboard-panel .lb-title .lb-title-text { display: flex; align-items: center; gap: 5px; }
+#lb-toggle-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--ink-soft); padding: 0 2px;
+  line-height: 1; transition: transform 0.2s;
+}
+#leaderboard-panel.collapsed #lb-toggle-btn { transform: rotate(180deg); }
+#leaderboard-panel .lb-list-wrap {
+  max-height: 300px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent;
+  margin-top: 8px;
+  transition: max-height 0.25s ease, opacity 0.2s ease, margin-top 0.2s ease;
+}
+#leaderboard-panel.collapsed .lb-list-wrap {
+  max-height: 0; overflow: hidden; opacity: 0; margin-top: 0;
 }
 #leaderboard-panel .lb-empty {
   font-size: 11px; color: var(--ink-soft); text-align: center; padding: 8px 0;
@@ -655,7 +670,8 @@ canvas { display: block; image-rendering: pixelated; }
   /* 이벤트 메시지: 중앙 하단 */
   #event-message { top: 55%; font-size: 13px; padding: 12px 16px; width: min(280px, 55vw); }
   #event-message.tutorial-mode { top: 74%; }
-  #leaderboard-panel { max-height: 180px; width: 185px; font-size: 10px; top: 8px; left: 8px; padding: 8px 10px; }
+  #leaderboard-panel { width: 185px; font-size: 10px; top: 8px; left: 8px; padding: 8px 10px; }
+  #leaderboard-panel .lb-list-wrap { max-height: 140px; }
 }
 </style>
   <!-- Firebase SDK (순위표용) -->
@@ -665,10 +681,15 @@ canvas { display: block; image-rendering: pixelated; }
 <body>
 <!-- 순위표 패널 (타이틀 화면 위에 표시, fixed) -->
 <div id="leaderboard-panel">
-  <div class="lb-title">🏆 명예의 전당</div>
-  <ul id="leaderboard-list">
-    <li class="lb-empty">불러오는 중...</li>
-  </ul>
+  <div class="lb-title" onclick="toggleLeaderboard()">
+    <span class="lb-title-text">🏆 명예의 전당</span>
+    <button id="lb-toggle-btn" type="button" aria-label="순위표 접기/펼치기">▲</button>
+  </div>
+  <div class="lb-list-wrap">
+    <ul id="leaderboard-list">
+      <li class="lb-empty">불러오는 중...</li>
+    </ul>
+  </div>
 </div>
 <div id="title-screen">
   <div class="blob-deco">🫧</div>
@@ -906,6 +927,11 @@ function _startLeaderboardListener() {
 function stopLeaderboard() {
   if (_lbUnsub) { _lbUnsub(); _lbUnsub = null; }
   document.getElementById('leaderboard-panel').style.display = 'none';
+}
+
+function toggleLeaderboard() {
+  const panel = document.getElementById('leaderboard-panel');
+  panel.classList.toggle('collapsed');
 }
 
 // ── 점수 등록 ────────────────────────────────────────
