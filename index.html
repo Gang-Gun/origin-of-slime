@@ -833,6 +833,11 @@ canvas { display: block; image-rendering: pixelated; }
       <button class="toggle-btn on" id="options-sfx-toggle" onclick="toggleOptionsSfx(this)"></button>
     </div>
     <div class="setting-row" style="border-top:1px solid var(--ink-faint);padding-top:12px;margin-top:4px">
+      <span>⛶ 전체화면</span>
+      <button class="pause-btn pause-settings fs-toggle-btn" style="width:auto;padding:8px 14px;font-size:13px"
+        onclick="toggleFullscreen()">⛶ 전체화면으로</button>
+    </div>
+    <div class="setting-row">
       <span>📖 튜토리얼 초기화</span>
       <button class="pause-btn pause-settings" style="width:auto;padding:8px 14px;font-size:13px"
         onclick="localStorage.removeItem('gpa_tutorial_done');closeOptionsModal();alert('초기화 완료. 다음 게임 시작 시 튜토리얼이 표시됩니다.')">초기화</button>
@@ -850,6 +855,11 @@ canvas { display: block; image-rendering: pixelated; }
       <div class="setting-row">
         <span>🔊 효과음</span>
         <button class="toggle-btn on" id="sfx-toggle" onclick="toggleSfxSetting(this)"></button>
+      </div>
+      <div class="setting-row">
+        <span>⛶ 전체화면</span>
+        <button class="pause-btn pause-settings fs-toggle-btn" style="width:auto;padding:8px 14px;font-size:14px"
+          onclick="toggleFullscreen()">⛶ 전체화면으로</button>
       </div>
       <div class="setting-row">
         <span>📖 튜토리얼 초기화</span>
@@ -3321,6 +3331,7 @@ class ArenaScene extends Phaser.Scene {
 
 let game = null;
 function startGame() {
+  enterFullscreen();            // 게임 시작 시 전체화면 (사용자 제스처 컨텍스트)
   stopLeaderboard(); // 게임 중엔 순위표 패널 숨김
   if (game) return;
   Audio.init(); Audio.resume(); // 사용자 제스처로 오디오 활성화
@@ -3614,6 +3625,29 @@ function toggleSfxSetting(btn) {
   const muteBtn = document.getElementById('mute-btn');
   if (muteBtn) muteBtn.textContent = muted ? '🔇' : '🔊';
 }
+
+/* ── 전체화면 관리 ───────────────────────────────────────────────── */
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function enterFullscreen() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (fn) fn.call(el).catch(() => {});
+}
+function exitFullscreen() {
+  const fn = document.exitFullscreen || document.webkitExitFullscreen;
+  if (fn) fn.call(document).catch(() => {});
+}
+function toggleFullscreen() {
+  if (isFullscreen()) exitFullscreen(); else enterFullscreen();
+}
+function _syncFsBtns() {
+  const label = isFullscreen() ? '🔲 창 모드로' : '⛶ 전체화면으로';
+  document.querySelectorAll('.fs-toggle-btn').forEach(btn => { btn.textContent = label; });
+}
+document.addEventListener('fullscreenchange', _syncFsBtns);
+document.addEventListener('webkitfullscreenchange', _syncFsBtns);
 
 /* ── 방향 전환 / 리사이즈 처리 ───────────────────────────────────── */
 let _orientTimer = null;
