@@ -1968,7 +1968,6 @@ class AudioManager {
 }
 const Audio = new AudioManager();
 
-
 class ArenaScene extends Phaser.Scene {
   constructor() {
     super('ArenaScene');
@@ -1977,7 +1976,6 @@ class ArenaScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
     this.cameras.main.setZoom(0.45);
-
     this.terrainGrid = this.generateTerrain();
     this.drawTerrain();
     this.foodSprites = [];
@@ -2226,42 +2224,34 @@ class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // 픽셀아트 슬라임: 물방울(teardrop) 형태, 제공된 레퍼런스 스프라이트 기반
+  // 픽셀아트 슬라임: 넓적한 돔형, 흰 눈 + 동공, 혀, 하이라이트
   createCreatureTexture(bodyColor) {
     const key = `creature_${bodyColor}`;
     if (this.textures.exists(key)) return key;
     const g = this.make.graphics({ add: false });
-    const S = 6; // 셀당 픽셀 크기
+    const S = 4; // screen pixels per grid cell
 
+    // 팔레트: 몸 색 기반 파생
     const c = bodyColor;
     const ri = (c >> 16) & 0xFF, gi = (c >> 8) & 0xFF, bi = c & 0xFF;
-    // 어두운 윤곽선
-    const D = (Math.floor(ri*.28)<<16)|(Math.floor(gi*.28)<<8)|Math.floor(bi*.28);
-    // 밝은 하이라이트
-    const L = (Math.min(255,Math.floor(ri*1.55))<<16)|(Math.min(255,Math.floor(gi*1.55))<<8)|Math.min(255,Math.floor(bi*1.55));
-    const C = c;           // 기본 몸 색
-    const H = 0xffffff;   // 흰 하이라이트
-    const E = 0xffffff;   // 눈 흰자
-    const P = 0x0d0d22;   // 동공
-    const M = 0x0d0d22;   // 입
-    const T = 0xff4488;   // 혀
-    const _ = null;
+    const dark  = (Math.floor(ri*.45)<<16)|(Math.floor(gi*.45)<<8)|Math.floor(bi*.45);
+    const light = (Math.min(255,Math.floor(ri*1.55))<<16)|(Math.min(255,Math.floor(gi*1.55))<<8)|Math.min(255,Math.floor(bi*1.55));
 
-    // 10 col × 13 row 물방울 형태
+    // 16 col × 10 row 픽셀 그리드 (null = 투명)
+    const _ = null, D = dark, L = light, H = 0xffffff;
+    const E = 0xffffff, PL = 0x111111, M = 0x111111, T = 0xff88aa;
+
     const grid = [
-      [_,_,_,D,D,D,D,_,_,_],   // 0  꼭대기 뾰족한 점
-      [_,_,D,C,L,L,C,D,_,_],   // 1
-      [_,D,C,H,L,C,C,C,D,_],   // 2  흰 하이라이트
-      [_,D,C,L,C,C,C,C,D,_],   // 3
-      [D,C,C,C,C,C,C,C,C,D],   // 4
-      [D,C,E,E,C,C,E,E,C,D],   // 5  눈 흰자
-      [D,C,E,P,C,C,E,P,C,D],   // 6  동공
-      [D,C,E,E,C,C,E,E,C,D],   // 7
-      [D,C,C,C,C,C,C,C,C,D],   // 8
-      [D,C,C,M,M,M,M,C,C,D],   // 9  입
-      [_,D,C,C,T,T,C,C,D,_],   // 10 혀
-      [_,D,C,C,C,C,C,C,D,_],   // 11
-      [_,_,D,D,D,D,D,D,_,_],   // 12 바닥
+      [_,_,_,D,D,D,D,D,D,D,D,D,_,_,_,_],  // 0 top arch
+      [_,_,D,L,L,L,L,L,L,L,L,L,D,_,_,_],  // 1
+      [_,D,L,H,H,L,L,L,L,L,L,L,L,D,_,_],  // 2 highlight
+      [D,L,L,H,L,L,L,L,L,L,L,L,L,L,D,_],  // 3
+      [D,L,L,L,E,E,L,L,L,E,E,L,L,L,D,_],  // 4 eyes white
+      [D,L,L,L,E,PL,L,L,L,E,PL,L,L,L,D,_], // 5 pupils
+      [D,L,L,L,E,E,L,L,L,E,E,L,L,L,D,_],  // 6 eyes base
+      [D,L,L,L,L,M,M,L,M,M,L,L,L,L,D,_],  // 7 mouth corners
+      [_,D,L,L,L,L,T,T,T,L,L,L,L,D,_,_],  // 8 tongue
+      [_,_,D,D,D,D,D,D,D,D,D,D,D,_,_,_],  // 9 flat bottom
     ];
 
     for (let row = 0; row < grid.length; row++) {
@@ -2272,7 +2262,7 @@ class ArenaScene extends Phaser.Scene {
         g.fillRect(col * S, row * S, S, S);
       }
     }
-    g.generateTexture(key, 10 * S, 13 * S); // 60×78
+    g.generateTexture(key, 16 * S, 10 * S); // 64×40
     g.destroy();
     return key;
   }
@@ -2287,10 +2277,8 @@ class ArenaScene extends Phaser.Scene {
 
   addIndividualSprite(individual, group) {
     if (this.individualSprites.has(individual.id)) return;
-    const bodyColor = getBodyColor(individual);
-    const key = this.createCreatureTexture(bodyColor);
-    // 1.5× 크기 적용
-    const scale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55) * 1.5;
+    const key = this.createCreatureTexture(getBodyColor(individual));
+    const scale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
     const sprite = this.add.image(individual.x, individual.y, key).setScale(scale);
     this.groupLayer.add(sprite);
     this.individualSprites.set(individual.id, { sprite, groupId: group.id });
@@ -2519,7 +2507,6 @@ class ArenaScene extends Phaser.Scene {
         const entry = this.individualSprites.get(individual.id);
         entry.sprite.x = individual.x;
         entry.sprite.y = individual.y;
-
       }
     }
     for (const [id, entry] of this.individualSprites.entries()) {

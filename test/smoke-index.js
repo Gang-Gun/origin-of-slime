@@ -71,7 +71,7 @@ const requiredNewCode = [
   "genotype === 'RR'",
   "genotype === 'BB'",
   '보라색',
-  'this.createCreatureTexture(bodyColor)',
+  'this.createCreatureTexture(getBodyColor(individual))',
   'const ESCAPE_FOOD_PENALTY = 0.25',
   'const ESCAPE_DISTANCE = 260',
   'tryFleeBattle',
