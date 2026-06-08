@@ -1969,32 +1969,32 @@ class AudioManager {
 const Audio = new AudioManager();
 
 // ── 파란 슬라임 스프라이트 시트 프레임 데이터 ──────────────────────
-// 형식: { name, x, y, w, h }  (blue-slime.png 기준, 295×211 프레임)
+// 형식: { name, x, y, w, h }  (blue-slime.png 기준, 148×106 프레임 — 원본 절반 크기로 압축)
 const BLUE_SLIME_FRAMES = [
   // 01 오른쪽 이동 (right move) — 4프레임
-  { name:'rm1', x:0,   y:0,   w:295, h:211 },
-  { name:'rm2', x:0,   y:212, w:295, h:211 },
-  { name:'rm3', x:296, y:0,   w:295, h:211 },
-  { name:'rm4', x:296, y:212, w:295, h:211 },
+  { name:'rm1', x:0,   y:0,   w:148, h:106 },
+  { name:'rm2', x:0,   y:106, w:148, h:106 },
+  { name:'rm3', x:148, y:0,   w:148, h:106 },
+  { name:'rm4', x:148, y:106, w:148, h:106 },
   // 02 오른쪽 공격 (right attack) — 4프레임
-  { name:'ra1', x:0,   y:424, w:295, h:211 },
-  { name:'ra2', x:296, y:424, w:295, h:211 },
-  { name:'ra3', x:0,   y:636, w:295, h:211 },
-  { name:'ra4', x:296, y:636, w:295, h:211 },
+  { name:'ra1', x:0,   y:212, w:148, h:106 },
+  { name:'ra2', x:148, y:212, w:148, h:106 },
+  { name:'ra3', x:0,   y:318, w:148, h:106 },
+  { name:'ra4', x:148, y:318, w:148, h:106 },
   // 03 왼쪽 이동 (left move) — 4프레임
-  { name:'lm1', x:592, y:0,   w:295, h:211 },
-  { name:'lm2', x:592, y:212, w:295, h:211 },
-  { name:'lm3', x:592, y:424, w:295, h:211 },
-  { name:'lm4', x:592, y:636, w:295, h:211 },
+  { name:'lm1', x:296, y:0,   w:148, h:106 },
+  { name:'lm2', x:296, y:106, w:148, h:106 },
+  { name:'lm3', x:296, y:212, w:148, h:106 },
+  { name:'lm4', x:296, y:318, w:148, h:106 },
   // 04 왼쪽 공격 (left attack) — 4프레임
-  { name:'la1', x:0,   y:848, w:295, h:211 },
-  { name:'la2', x:296, y:848, w:295, h:211 },
-  { name:'la3', x:592, y:848, w:295, h:211 },
-  { name:'la4', x:888, y:0,   w:295, h:211 },
+  { name:'la1', x:0,   y:424, w:148, h:106 },
+  { name:'la2', x:148, y:424, w:148, h:106 },
+  { name:'la3', x:296, y:424, w:148, h:106 },
+  { name:'la4', x:444, y:0,   w:148, h:106 },
 ];
 
-// 295px 원본 프레임을 게임 내 크기로 보이게 하는 기준 배율 (×1.5 적용)
-const SLIME_BASE_SCALE = (64 * 1.5) / 295;
+// 148px 프레임 기준 배율 (×1.5 적용)
+const SLIME_BASE_SCALE = (64 * 1.5) / 148;
 
 class ArenaScene extends Phaser.Scene {
   constructor() {
