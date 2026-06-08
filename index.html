@@ -1969,30 +1969,32 @@ class AudioManager {
 const Audio = new AudioManager();
 
 // ── 파란 슬라임 스프라이트 시트 프레임 데이터 ──────────────────────
-// 형식: { name, x, y, w, h }  (blue-slime.png 기준)
+// 형식: { name, x, y, w, h }  (blue-slime.png 기준, 295×211 프레임)
 const BLUE_SLIME_FRAMES = [
   // 01 오른쪽 이동 (right move) — 4프레임
-  { name:'rm1', x:0,   y:0,   w:368, h:276 },
-  { name:'rm2', x:0,   y:277, w:368, h:276 },
-  { name:'rm3', x:369, y:0,   w:368, h:276 },
-  { name:'rm4', x:369, y:277, w:368, h:276 },
-  // 02 오른쪽 공격 (right attack) — 3프레임 (02_02 누락)
-  { name:'ra1', x:0,   y:554, w:368, h:276 },
-  { name:'ra3', x:369, y:554, w:368, h:276 },
-  { name:'ra4', x:738, y:0,   w:368, h:276 },
+  { name:'rm1', x:0,   y:0,   w:295, h:211 },
+  { name:'rm2', x:0,   y:212, w:295, h:211 },
+  { name:'rm3', x:296, y:0,   w:295, h:211 },
+  { name:'rm4', x:296, y:212, w:295, h:211 },
+  // 02 오른쪽 공격 (right attack) — 4프레임
+  { name:'ra1', x:0,   y:424, w:295, h:211 },
+  { name:'ra2', x:296, y:424, w:295, h:211 },
+  { name:'ra3', x:0,   y:636, w:295, h:211 },
+  { name:'ra4', x:296, y:636, w:295, h:211 },
   // 03 왼쪽 이동 (left move) — 4프레임
-  { name:'lm1', x:738, y:277, w:368, h:276 },
-  { name:'lm2', x:738, y:554, w:368, h:276 },
-  { name:'lm3', x:0,   y:831, w:368, h:276 },
-  { name:'lm4', x:369, y:831, w:368, h:276 },
-  // 04 왼쪽 공격 (left attack) — 3프레임 (04_01 누락)
-  { name:'la2', x:738, y:831, w:368, h:276 },
-  { name:'la3', x:0,   y:1108, w:368, h:276 },
-  { name:'la4', x:369, y:1108, w:368, h:276 },
+  { name:'lm1', x:592, y:0,   w:295, h:211 },
+  { name:'lm2', x:592, y:212, w:295, h:211 },
+  { name:'lm3', x:592, y:424, w:295, h:211 },
+  { name:'lm4', x:592, y:636, w:295, h:211 },
+  // 04 왼쪽 공격 (left attack) — 4프레임
+  { name:'la1', x:0,   y:848, w:295, h:211 },
+  { name:'la2', x:296, y:848, w:295, h:211 },
+  { name:'la3', x:592, y:848, w:295, h:211 },
+  { name:'la4', x:888, y:0,   w:295, h:211 },
 ];
 
-// 368px 원본 프레임을 게임 내 ~64 world px 크기로 보이게 하는 기준 배율
-const BLUE_BASE_SCALE = 64 / 368;
+// 295px 원본 프레임을 게임 내 ~64 world px 크기로 보이게 하는 기준 배율
+const BLUE_BASE_SCALE = 64 / 295;
 
 class ArenaScene extends Phaser.Scene {
   constructor() {
@@ -2013,10 +2015,10 @@ class ArenaScene extends Phaser.Scene {
 
     // ── 파란 슬라임 애니메이션 정의 ──
     const K = 'slime_blue';
-    this.anims.create({ key:'blue_rm', frames: this.anims.generateFrameNames(K, {frames:['rm1','rm2','rm3','rm4']}), frameRate:8, repeat:-1 });
-    this.anims.create({ key:'blue_ra', frames: this.anims.generateFrameNames(K, {frames:['ra1','ra3','ra4']}),       frameRate:10, repeat:0 });
-    this.anims.create({ key:'blue_lm', frames: this.anims.generateFrameNames(K, {frames:['lm1','lm2','lm3','lm4']}), frameRate:8, repeat:-1 });
-    this.anims.create({ key:'blue_la', frames: this.anims.generateFrameNames(K, {frames:['la2','la3','la4']}),       frameRate:10, repeat:0 });
+    this.anims.create({ key:'blue_rm', frames: this.anims.generateFrameNames(K, {frames:['rm1','rm2','rm3','rm4']}), frameRate:8,  repeat:-1 });
+    this.anims.create({ key:'blue_ra', frames: this.anims.generateFrameNames(K, {frames:['ra1','ra2','ra3','ra4']}), frameRate:10, repeat:0  });
+    this.anims.create({ key:'blue_lm', frames: this.anims.generateFrameNames(K, {frames:['lm1','lm2','lm3','lm4']}), frameRate:8,  repeat:-1 });
+    this.anims.create({ key:'blue_la', frames: this.anims.generateFrameNames(K, {frames:['la1','la2','la3','la4']}), frameRate:10, repeat:0  });
 
     this.terrainGrid = this.generateTerrain();
     this.drawTerrain();
