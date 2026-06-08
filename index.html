@@ -1993,8 +1993,8 @@ const BLUE_SLIME_FRAMES = [
   { name:'la4', x:888, y:0,   w:295, h:211 },
 ];
 
-// 295px 원본 프레임을 게임 내 ~64 world px 크기로 보이게 하는 기준 배율
-const BLUE_BASE_SCALE = 64 / 295;
+// 295px 원본 프레임을 게임 내 크기로 보이게 하는 기준 배율 (×1.5 적용)
+const SLIME_BASE_SCALE = (64 * 1.5) / 295;
 
 class ArenaScene extends Phaser.Scene {
   constructor() {
@@ -2324,26 +2324,28 @@ class ArenaScene extends Phaser.Scene {
     const bodyColor = getBodyColor(individual);
     const hpScale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
 
-    let sprite;
-    if (bodyColor === BODY_COLOR_BLUE) {
-      // 파란 슬라임: 스프라이트 시트 애니메이션 사용
-      sprite = this.add.sprite(individual.x, individual.y, 'slime_blue', 'rm1');
-      sprite.setScale(hpScale * BLUE_BASE_SCALE);
-      sprite.play('blue_rm');
-      // 공격 애니메이션 완료 후 이동 애니메이션으로 복귀
-      sprite.on('animationcomplete', (anim) => {
-        if (anim.key === 'blue_ra') sprite.play('blue_rm');
-        if (anim.key === 'blue_la') sprite.play('blue_lm');
-      });
-      this.individualSprites.set(individual.id, {
-        sprite, groupId: group.id, isBlue: true, prevX: individual.x, facingRight: true
-      });
-    } else {
-      const key = this.createCreatureTexture(bodyColor);
-      sprite = this.add.image(individual.x, individual.y, key).setScale(hpScale);
-      this.individualSprites.set(individual.id, { sprite, groupId: group.id, isBlue: false });
+    // 모든 색상이 동일한 스프라이트 시트를 사용하고 PostFX 색조 회전으로 구분
+    const sprite = this.add.sprite(individual.x, individual.y, 'slime_blue', 'rm1');
+    sprite.setScale(hpScale * SLIME_BASE_SCALE);
+
+    // 색조 회전: 파란 슬라임(240°) 기준으로 회전
+    // 빨강(0°): +120°, 보라(300°): +60°  (Phaser hue 양수 = 색상환 반시계)
+    if (bodyColor === BODY_COLOR_RED) {
+      try { sprite.postFX.addColorMatrix().hue(120); } catch (e) {}
+    } else if (bodyColor === BODY_COLOR_PURPLE) {
+      try { sprite.postFX.addColorMatrix().hue(60); } catch (e) {}
     }
+
+    sprite.play('blue_rm');
+    sprite.on('animationcomplete', anim => {
+      if (anim.key === 'blue_ra') sprite.play('blue_rm');
+      if (anim.key === 'blue_la') sprite.play('blue_lm');
+    });
+
     this.groupLayer.add(sprite);
+    this.individualSprites.set(individual.id, {
+      sprite, groupId: group.id, prevX: individual.x, facingRight: true
+    });
   }
 
   ensureSprites(group) {
@@ -2570,26 +2572,21 @@ class ArenaScene extends Phaser.Scene {
         entry.sprite.x = individual.x;
         entry.sprite.y = individual.y;
 
-        // ── 파란 슬라임 애니메이션 업데이트 ──
-        if (entry.isBlue) {
-          const dx = individual.x - entry.prevX;
-          // 이동이 있으면 방향 갱신
-          if (Math.abs(dx) > 0.5) entry.facingRight = dx > 0;
-          entry.prevX = individual.x;
+        // ── 슬라임 애니메이션 업데이트 (전 색상 공통) ──
+        const dx = individual.x - entry.prevX;
+        if (Math.abs(dx) > 0.5) entry.facingRight = dx > 0;
+        entry.prevX = individual.x;
 
-          const inBattle = group.state === 'battle';
-          const curAnim = entry.sprite.anims.currentAnim?.key;
+        const inBattle = group.state === 'battle';
+        const curAnim = entry.sprite.anims?.currentAnim?.key;
 
-          if (inBattle) {
-            // 공격 애니메이션 (진행 중이면 유지, 아니면 시작)
-            const atkKey = entry.facingRight ? 'blue_ra' : 'blue_la';
-            if (curAnim !== atkKey) entry.sprite.play(atkKey);
-          } else {
-            // 이동 애니메이션
-            const moveKey = entry.facingRight ? 'blue_rm' : 'blue_lm';
-            if (curAnim !== moveKey && curAnim !== 'blue_ra' && curAnim !== 'blue_la') {
-              entry.sprite.play(moveKey);
-            }
+        if (inBattle) {
+          const atkKey = entry.facingRight ? 'blue_ra' : 'blue_la';
+          if (curAnim !== atkKey) entry.sprite.play(atkKey);
+        } else {
+          const moveKey = entry.facingRight ? 'blue_rm' : 'blue_lm';
+          if (curAnim !== moveKey && curAnim !== 'blue_ra' && curAnim !== 'blue_la') {
+            entry.sprite.play(moveKey);
           }
         }
       }
