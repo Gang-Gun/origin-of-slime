@@ -1968,14 +1968,56 @@ class AudioManager {
 }
 const Audio = new AudioManager();
 
+// ── 파란 슬라임 스프라이트 시트 프레임 데이터 ──────────────────────
+// 형식: { name, x, y, w, h }  (blue-slime.png 기준)
+const BLUE_SLIME_FRAMES = [
+  // 01 오른쪽 이동 (right move) — 4프레임
+  { name:'rm1', x:0,   y:0,   w:368, h:276 },
+  { name:'rm2', x:0,   y:277, w:368, h:276 },
+  { name:'rm3', x:369, y:0,   w:368, h:276 },
+  { name:'rm4', x:369, y:277, w:368, h:276 },
+  // 02 오른쪽 공격 (right attack) — 3프레임 (02_02 누락)
+  { name:'ra1', x:0,   y:554, w:368, h:276 },
+  { name:'ra3', x:369, y:554, w:368, h:276 },
+  { name:'ra4', x:738, y:0,   w:368, h:276 },
+  // 03 왼쪽 이동 (left move) — 4프레임
+  { name:'lm1', x:738, y:277, w:368, h:276 },
+  { name:'lm2', x:738, y:554, w:368, h:276 },
+  { name:'lm3', x:0,   y:831, w:368, h:276 },
+  { name:'lm4', x:369, y:831, w:368, h:276 },
+  // 04 왼쪽 공격 (left attack) — 3프레임 (04_01 누락)
+  { name:'la2', x:738, y:831, w:368, h:276 },
+  { name:'la3', x:0,   y:1108, w:368, h:276 },
+  { name:'la4', x:369, y:1108, w:368, h:276 },
+];
+
+// 368px 원본 프레임을 게임 내 ~64 world px 크기로 보이게 하는 기준 배율
+const BLUE_BASE_SCALE = 64 / 368;
+
 class ArenaScene extends Phaser.Scene {
   constructor() {
     super('ArenaScene');
   }
 
+  preload() {
+    this.load.image('slime_blue', 'assets/blue-slime.png');
+  }
+
   create() {
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
     this.cameras.main.setZoom(0.45);
+
+    // ── 파란 슬라임 아틀라스 프레임 등록 ──
+    const blueTex = this.textures.get('slime_blue');
+    BLUE_SLIME_FRAMES.forEach(f => blueTex.add(f.name, 0, f.x, f.y, f.w, f.h));
+
+    // ── 파란 슬라임 애니메이션 정의 ──
+    const K = 'slime_blue';
+    this.anims.create({ key:'blue_rm', frames: this.anims.generateFrameNames(K, {frames:['rm1','rm2','rm3','rm4']}), frameRate:8, repeat:-1 });
+    this.anims.create({ key:'blue_ra', frames: this.anims.generateFrameNames(K, {frames:['ra1','ra3','ra4']}),       frameRate:10, repeat:0 });
+    this.anims.create({ key:'blue_lm', frames: this.anims.generateFrameNames(K, {frames:['lm1','lm2','lm3','lm4']}), frameRate:8, repeat:-1 });
+    this.anims.create({ key:'blue_la', frames: this.anims.generateFrameNames(K, {frames:['la2','la3','la4']}),       frameRate:10, repeat:0 });
+
     this.terrainGrid = this.generateTerrain();
     this.drawTerrain();
     this.foodSprites = [];
@@ -2277,11 +2319,29 @@ class ArenaScene extends Phaser.Scene {
 
   addIndividualSprite(individual, group) {
     if (this.individualSprites.has(individual.id)) return;
-    const key = this.createCreatureTexture(getBodyColor(individual));
-    const scale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
-    const sprite = this.add.image(individual.x, individual.y, key).setScale(scale);
+    const bodyColor = getBodyColor(individual);
+    const hpScale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
+
+    let sprite;
+    if (bodyColor === BODY_COLOR_BLUE) {
+      // 파란 슬라임: 스프라이트 시트 애니메이션 사용
+      sprite = this.add.sprite(individual.x, individual.y, 'slime_blue', 'rm1');
+      sprite.setScale(hpScale * BLUE_BASE_SCALE);
+      sprite.play('blue_rm');
+      // 공격 애니메이션 완료 후 이동 애니메이션으로 복귀
+      sprite.on('animationcomplete', (anim) => {
+        if (anim.key === 'blue_ra') sprite.play('blue_rm');
+        if (anim.key === 'blue_la') sprite.play('blue_lm');
+      });
+      this.individualSprites.set(individual.id, {
+        sprite, groupId: group.id, isBlue: true, prevX: individual.x, facingRight: true
+      });
+    } else {
+      const key = this.createCreatureTexture(bodyColor);
+      sprite = this.add.image(individual.x, individual.y, key).setScale(hpScale);
+      this.individualSprites.set(individual.id, { sprite, groupId: group.id, isBlue: false });
+    }
     this.groupLayer.add(sprite);
-    this.individualSprites.set(individual.id, { sprite, groupId: group.id });
   }
 
   ensureSprites(group) {
@@ -2507,6 +2567,29 @@ class ArenaScene extends Phaser.Scene {
         const entry = this.individualSprites.get(individual.id);
         entry.sprite.x = individual.x;
         entry.sprite.y = individual.y;
+
+        // ── 파란 슬라임 애니메이션 업데이트 ──
+        if (entry.isBlue) {
+          const dx = individual.x - entry.prevX;
+          // 이동이 있으면 방향 갱신
+          if (Math.abs(dx) > 0.5) entry.facingRight = dx > 0;
+          entry.prevX = individual.x;
+
+          const inBattle = group.state === 'battle';
+          const curAnim = entry.sprite.anims.currentAnim?.key;
+
+          if (inBattle) {
+            // 공격 애니메이션 (진행 중이면 유지, 아니면 시작)
+            const atkKey = entry.facingRight ? 'blue_ra' : 'blue_la';
+            if (curAnim !== atkKey) entry.sprite.play(atkKey);
+          } else {
+            // 이동 애니메이션
+            const moveKey = entry.facingRight ? 'blue_rm' : 'blue_lm';
+            if (curAnim !== moveKey && curAnim !== 'blue_ra' && curAnim !== 'blue_la') {
+              entry.sprite.play(moveKey);
+            }
+          }
+        }
       }
     }
     for (const [id, entry] of this.individualSprites.entries()) {
