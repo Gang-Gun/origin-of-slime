@@ -1968,57 +1968,15 @@ class AudioManager {
 }
 const Audio = new AudioManager();
 
-// ── 파란 슬라임 스프라이트 시트 프레임 데이터 ──────────────────────
-// 형식: { name, x, y, w, h }  (blue-slime.png 기준, 148×106 프레임 — 원본 절반 크기로 압축)
-const BLUE_SLIME_FRAMES = [
-  // 01 오른쪽 이동 (right move) — 4프레임
-  { name:'rm1', x:0,   y:0,   w:148, h:106 },
-  { name:'rm2', x:0,   y:106, w:148, h:106 },
-  { name:'rm3', x:148, y:0,   w:148, h:106 },
-  { name:'rm4', x:148, y:106, w:148, h:106 },
-  // 02 오른쪽 공격 (right attack) — 4프레임
-  { name:'ra1', x:0,   y:212, w:148, h:106 },
-  { name:'ra2', x:148, y:212, w:148, h:106 },
-  { name:'ra3', x:0,   y:318, w:148, h:106 },
-  { name:'ra4', x:148, y:318, w:148, h:106 },
-  // 03 왼쪽 이동 (left move) — 4프레임
-  { name:'lm1', x:296, y:0,   w:148, h:106 },
-  { name:'lm2', x:296, y:106, w:148, h:106 },
-  { name:'lm3', x:296, y:212, w:148, h:106 },
-  { name:'lm4', x:296, y:318, w:148, h:106 },
-  // 04 왼쪽 공격 (left attack) — 4프레임
-  { name:'la1', x:0,   y:424, w:148, h:106 },
-  { name:'la2', x:148, y:424, w:148, h:106 },
-  { name:'la3', x:296, y:424, w:148, h:106 },
-  { name:'la4', x:444, y:0,   w:148, h:106 },
-];
-
-// 148px 프레임 기준 배율 (×1.5 적용)
-const SLIME_BASE_SCALE = (64 * 1.5) / 148;
 
 class ArenaScene extends Phaser.Scene {
   constructor() {
     super('ArenaScene');
   }
 
-  preload() {
-    this.load.image('slime_blue', 'assets/blue-slime.png');
-  }
-
   create() {
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
     this.cameras.main.setZoom(0.45);
-
-    // ── 파란 슬라임 아틀라스 프레임 등록 ──
-    const blueTex = this.textures.get('slime_blue');
-    BLUE_SLIME_FRAMES.forEach(f => blueTex.add(f.name, 0, f.x, f.y, f.w, f.h));
-
-    // ── 파란 슬라임 애니메이션 정의 ──
-    const K = 'slime_blue';
-    this.anims.create({ key:'blue_rm', frames: this.anims.generateFrameNames(K, {frames:['rm1','rm2','rm3','rm4']}), frameRate:8,  repeat:-1 });
-    this.anims.create({ key:'blue_ra', frames: this.anims.generateFrameNames(K, {frames:['ra1','ra2','ra3','ra4']}), frameRate:10, repeat:0  });
-    this.anims.create({ key:'blue_lm', frames: this.anims.generateFrameNames(K, {frames:['lm1','lm2','lm3','lm4']}), frameRate:8,  repeat:-1 });
-    this.anims.create({ key:'blue_la', frames: this.anims.generateFrameNames(K, {frames:['la1','la2','la3','la4']}), frameRate:10, repeat:0  });
 
     this.terrainGrid = this.generateTerrain();
     this.drawTerrain();
@@ -2268,34 +2226,42 @@ class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // 픽셀아트 슬라임: 넓적한 돔형, 흰 눈 + 동공, 혀, 하이라이트
+  // 픽셀아트 슬라임: 물방울(teardrop) 형태, 제공된 레퍼런스 스프라이트 기반
   createCreatureTexture(bodyColor) {
     const key = `creature_${bodyColor}`;
     if (this.textures.exists(key)) return key;
     const g = this.make.graphics({ add: false });
-    const S = 4; // screen pixels per grid cell
+    const S = 6; // 셀당 픽셀 크기
 
-    // 팔레트: 몸 색 기반 파생
     const c = bodyColor;
     const ri = (c >> 16) & 0xFF, gi = (c >> 8) & 0xFF, bi = c & 0xFF;
-    const dark  = (Math.floor(ri*.45)<<16)|(Math.floor(gi*.45)<<8)|Math.floor(bi*.45);
-    const light = (Math.min(255,Math.floor(ri*1.55))<<16)|(Math.min(255,Math.floor(gi*1.55))<<8)|Math.min(255,Math.floor(bi*1.55));
+    // 어두운 윤곽선
+    const D = (Math.floor(ri*.28)<<16)|(Math.floor(gi*.28)<<8)|Math.floor(bi*.28);
+    // 밝은 하이라이트
+    const L = (Math.min(255,Math.floor(ri*1.55))<<16)|(Math.min(255,Math.floor(gi*1.55))<<8)|Math.min(255,Math.floor(bi*1.55));
+    const C = c;           // 기본 몸 색
+    const H = 0xffffff;   // 흰 하이라이트
+    const E = 0xffffff;   // 눈 흰자
+    const P = 0x0d0d22;   // 동공
+    const M = 0x0d0d22;   // 입
+    const T = 0xff4488;   // 혀
+    const _ = null;
 
-    // 16 col × 10 row 픽셀 그리드 (null = 투명)
-    const _ = null, D = dark, L = light, H = 0xffffff;
-    const E = 0xffffff, PL = 0x111111, M = 0x111111, T = 0xff88aa;
-
+    // 10 col × 13 row 물방울 형태
     const grid = [
-      [_,_,_,D,D,D,D,D,D,D,D,D,_,_,_,_],  // 0 top arch
-      [_,_,D,L,L,L,L,L,L,L,L,L,D,_,_,_],  // 1
-      [_,D,L,H,H,L,L,L,L,L,L,L,L,D,_,_],  // 2 highlight
-      [D,L,L,H,L,L,L,L,L,L,L,L,L,L,D,_],  // 3
-      [D,L,L,L,E,E,L,L,L,E,E,L,L,L,D,_],  // 4 eyes white
-      [D,L,L,L,E,PL,L,L,L,E,PL,L,L,L,D,_], // 5 pupils
-      [D,L,L,L,E,E,L,L,L,E,E,L,L,L,D,_],  // 6 eyes base
-      [D,L,L,L,L,M,M,L,M,M,L,L,L,L,D,_],  // 7 mouth corners
-      [_,D,L,L,L,L,T,T,T,L,L,L,L,D,_,_],  // 8 tongue
-      [_,_,D,D,D,D,D,D,D,D,D,D,D,_,_,_],  // 9 flat bottom
+      [_,_,_,D,D,D,D,_,_,_],   // 0  꼭대기 뾰족한 점
+      [_,_,D,C,L,L,C,D,_,_],   // 1
+      [_,D,C,H,L,C,C,C,D,_],   // 2  흰 하이라이트
+      [_,D,C,L,C,C,C,C,D,_],   // 3
+      [D,C,C,C,C,C,C,C,C,D],   // 4
+      [D,C,E,E,C,C,E,E,C,D],   // 5  눈 흰자
+      [D,C,E,P,C,C,E,P,C,D],   // 6  동공
+      [D,C,E,E,C,C,E,E,C,D],   // 7
+      [D,C,C,C,C,C,C,C,C,D],   // 8
+      [D,C,C,M,M,M,M,C,C,D],   // 9  입
+      [_,D,C,C,T,T,C,C,D,_],   // 10 혀
+      [_,D,C,C,C,C,C,C,D,_],   // 11
+      [_,_,D,D,D,D,D,D,_,_],   // 12 바닥
     ];
 
     for (let row = 0; row < grid.length; row++) {
@@ -2306,7 +2272,7 @@ class ArenaScene extends Phaser.Scene {
         g.fillRect(col * S, row * S, S, S);
       }
     }
-    g.generateTexture(key, 16 * S, 10 * S); // 64×40
+    g.generateTexture(key, 10 * S, 13 * S); // 60×78
     g.destroy();
     return key;
   }
@@ -2322,30 +2288,12 @@ class ArenaScene extends Phaser.Scene {
   addIndividualSprite(individual, group) {
     if (this.individualSprites.has(individual.id)) return;
     const bodyColor = getBodyColor(individual);
-    const hpScale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
-
-    // 모든 색상이 동일한 스프라이트 시트를 사용하고 PostFX 색조 회전으로 구분
-    const sprite = this.add.sprite(individual.x, individual.y, 'slime_blue', 'rm1');
-    sprite.setScale(hpScale * SLIME_BASE_SCALE);
-
-    // 색조 회전: 파란 슬라임(240°) 기준으로 회전
-    // 빨강(0°): +120°, 보라(300°): +60°  (Phaser hue 양수 = 색상환 반시계)
-    if (bodyColor === BODY_COLOR_RED) {
-      try { sprite.postFX.addColorMatrix().hue(120); } catch (e) {}
-    } else if (bodyColor === BODY_COLOR_PURPLE) {
-      try { sprite.postFX.addColorMatrix().hue(60); } catch (e) {}
-    }
-
-    sprite.play('blue_rm');
-    sprite.on('animationcomplete', anim => {
-      if (anim.key === 'blue_ra') sprite.play('blue_rm');
-      if (anim.key === 'blue_la') sprite.play('blue_lm');
-    });
-
+    const key = this.createCreatureTexture(bodyColor);
+    // 1.5× 크기 적용
+    const scale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55) * 1.5;
+    const sprite = this.add.image(individual.x, individual.y, key).setScale(scale);
     this.groupLayer.add(sprite);
-    this.individualSprites.set(individual.id, {
-      sprite, groupId: group.id, prevX: individual.x, facingRight: true
-    });
+    this.individualSprites.set(individual.id, { sprite, groupId: group.id });
   }
 
   ensureSprites(group) {
@@ -2572,23 +2520,6 @@ class ArenaScene extends Phaser.Scene {
         entry.sprite.x = individual.x;
         entry.sprite.y = individual.y;
 
-        // ── 슬라임 애니메이션 업데이트 (전 색상 공통) ──
-        const dx = individual.x - entry.prevX;
-        if (Math.abs(dx) > 0.5) entry.facingRight = dx > 0;
-        entry.prevX = individual.x;
-
-        const inBattle = group.state === 'battle';
-        const curAnim = entry.sprite.anims?.currentAnim?.key;
-
-        if (inBattle) {
-          const atkKey = entry.facingRight ? 'blue_ra' : 'blue_la';
-          if (curAnim !== atkKey) entry.sprite.play(atkKey);
-        } else {
-          const moveKey = entry.facingRight ? 'blue_rm' : 'blue_lm';
-          if (curAnim !== moveKey && curAnim !== 'blue_ra' && curAnim !== 'blue_la') {
-            entry.sprite.play(moveKey);
-          }
-        }
       }
     }
     for (const [id, entry] of this.individualSprites.entries()) {
