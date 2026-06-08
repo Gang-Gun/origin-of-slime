@@ -1074,7 +1074,7 @@ const TERRAIN = {
   volcano: { id: 'volcano', name: '화산지대', ico:'🌋', color: 0xe8927c, dark: 0xd97a64, food: 1.05, speed: 0.82, damage: 2 },
   snow:    { id: 'snow',    name: '눈밭',    ico:'❄️', color: 0xeaf2fb, dark: 0xd2e2f2, food: 0.82, speed: 0.75 },
   river:   { id: 'river',   name: '강가',    ico:'💧', color: 0x8ecfe8, dark: 0x6fb8d8, food: 1.05, speed: 0.95 },
-  swamp:   { id: 'swamp',   name: '독성 늪',  ico:'🐸', color: 0x9bb86a, dark: 0x86a356, food: 0.88, speed: 0.65, damage: 3 }
+  swamp:   { id: 'swamp',   name: '독성 늪',  ico:'🐸', color: 0xb87fd4, dark: 0x9460b8, food: 0.88, speed: 0.65, damage: 3 }
 };
 const TERRAIN_LIST = Object.values(TERRAIN);
 
@@ -2072,7 +2072,7 @@ class ArenaScene extends Phaser.Scene {
       rx += (Math.random() - 0.46) * 0.055; // 약간 우측 편향
       rx = clamp(rx, 0.30, 0.88);
     }
-    const RIVER_W = 0.038; // 강 너비 (비율)
+    const RIVER_W = 0.075; // 강 너비 (비율)
 
     const grid = [];
     for (let y = 0; y < H; y++) {
