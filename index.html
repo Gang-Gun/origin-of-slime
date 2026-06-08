@@ -156,33 +156,43 @@ canvas { display: block; image-rendering: pixelated; }
 }
 #lb-feedback { font-size: 13px; color: #22c55e; min-height: 18px; margin-top: 6px; }
 
-/* ─── 타이틀 ─── */
+/* ─── 타이틀 (배경 일러스트) ─── */
 #title-screen {
   position: fixed; inset: 0; z-index: 40;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 20px; padding: 28px; text-align: center;
-  background:
-    radial-gradient(ellipse at 20% 15%, rgba(255,220,130,.55) 0%, transparent 42%),
-    radial-gradient(ellipse at 80% 80%, rgba(196,158,224,.50) 0%, transparent 48%),
-    linear-gradient(155deg, #b3e5fc 0%, #c8f0c2 50%, #ffe5be 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: 16px; padding: 28px 28px max(7vh, 40px); text-align: center;
+  /* 기본(세로) 배경 — 가로 모드에서 미디어쿼리로 교체 */
+  background: #5aa9e6 url('assets/title-bg-port.webp') center center / cover no-repeat;
 }
-#title-screen .blob-deco {
-  font-size: 80px; line-height: 1;
-  animation: bob 2.6s ease-in-out infinite;
-  filter: drop-shadow(0 10px 0 rgba(100,75,55,.18)) drop-shadow(0 0 30px rgba(110,196,106,.35));
+/* 버튼·제목 가독성용 하단 어둡게 */
+#title-screen::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.12) 62%, rgba(0,0,0,0.5) 100%);
 }
-@keyframes bob { 0%,100%{transform:translateY(0) rotate(-4deg) scale(1)} 50%{transform:translateY(-16px) rotate(4deg) scale(1.06)} }
+/* 가로 모드: 가로 일러스트로 교체 */
+@media (orientation: landscape) {
+  #title-screen { background-image: url('assets/title-bg-land.webp'); }
+}
 #title-screen h1 {
-  font-family: 'Jua', sans-serif; font-size: clamp(32px, 8.5vw, 58px); line-height: 1.08;
+  position: relative; z-index: 1;
+  font-family: 'Jua', sans-serif; font-size: clamp(30px, 8vw, 54px); line-height: 1.08;
   color: #fff;
-  text-shadow: 0 2px 0 var(--coral), 0 5px 0 rgba(100,75,55,.28), 0 0 40px rgba(255,255,255,.3);
+  text-shadow: 0 2px 0 var(--coral), 0 4px 0 rgba(20,15,10,.45), 0 0 36px rgba(0,0,0,.4);
   letter-spacing: 1px;
 }
-#title-screen h1 .en { display:block; font-size:.48em; color:var(--ink); text-shadow:0 2px 0 rgba(255,255,255,.8); margin-top:5px; letter-spacing:2px; }
-#title-screen .subtitle {
-  max-width: 490px; color: var(--ink); line-height: 1.85; font-size: 14px; font-weight: 700;
-  background: rgba(255,255,255,.6); padding: 14px 22px; border-radius: 20px;
-  border: 2px solid rgba(255,255,255,.8); box-shadow: 0 4px 12px rgba(100,75,55,.12);
+#title-screen h1 .en { display:block; font-size:.42em; color:#ffe27a; text-shadow:0 2px 0 rgba(20,15,10,.55); margin-top:6px; letter-spacing:3px; }
+#title-menu {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  width: min(320px, 80vw);
+}
+#title-menu .big-btn { width: 100%; }
+/* 가로모드: 메뉴 가로 배치 + 살짝 작게 */
+@media (orientation: landscape) and (max-height: 560px) {
+  #title-screen { gap: 10px; padding-bottom: 18px; }
+  #title-screen h1 { font-size: clamp(22px, 5vw, 34px); }
+  #title-menu { flex-direction: row; width: auto; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  #title-menu .big-btn { width: auto; font-size: 16px; padding: 10px 24px; }
 }
 .big-btn {
   font-family: 'Jua', sans-serif; font-size: 22px; color: #fff;
@@ -724,12 +734,12 @@ canvas { display: block; image-rendering: pixelated; }
   </div>
 </div>
 <div id="title-screen">
-  <div class="blob-deco">🫧</div>
   <h1>슬라임의 기원<span class="en">Origin of Slime</span></h1>
-  <p class="subtitle">슬라임 집단을 이끌고 먹이를 모으세요. 번식·돌연변이·전쟁으로 유전자 풀이 변해갑니다. 5분 뒤, 운명의 순간이 찾아옵니다…</p>
-  <button id="start-btn" class="big-btn" type="button" onclick="startGame()">🌱 게임 시작</button>
-  <button type="button" class="big-btn sky" onclick="openDex()">📖 도감</button>
-  <button type="button" class="big-btn lilac" onclick="openOptionsModal()">⚙️ 옵션</button>
+  <div id="title-menu">
+    <button id="start-btn" class="big-btn" type="button" onclick="startGame()">🌱 게임 시작</button>
+    <button type="button" class="big-btn sky" onclick="openDex()">📖 도감</button>
+    <button type="button" class="big-btn lilac" onclick="openOptionsModal()">⚙️ 옵션</button>
+  </div>
 </div>
 
 <div id="game-container"></div>
