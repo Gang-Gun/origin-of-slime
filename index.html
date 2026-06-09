@@ -1991,6 +1991,7 @@ class ArenaScene extends Phaser.Scene {
     this.foodSprites = [];
     this.foods = [];
     this.individualSprites = new Map();
+    this.shadowGraphics = this.add.graphics().setDepth(2); // 슬라임 바닥 그림자
     this.hpGraphics = this.add.graphics().setDepth(5);
     this.player = new Group(WORLD_W / 2, WORLD_H / 2, true, '나의 집단');
     this.initGroup(this.player, START_INDIVIDUALS);
@@ -2116,67 +2117,196 @@ class ArenaScene extends Phaser.Scene {
     return grid;
   }
 
+  // 색을 흰색 쪽으로 f(0~1) 만큼 보간
+  _lighten(c, f) {
+    const r = ((c >> 16) & 0xFF), gg = ((c >> 8) & 0xFF), b = (c & 0xFF);
+    return (Math.floor(r + (255 - r) * f) << 16)
+         | (Math.floor(gg + (255 - gg) * f) << 8)
+         |  Math.floor(b + (255 - b) * f);
+  }
+
   drawTerrain() {
     const rows = this.terrainGrid.length;
     const cols = this.terrainGrid[0]?.length || 0;
     const g = this.add.graphics().setDepth(0);
 
-    // Pass 1: 색상별로 그룹핑 → WebGL 배치 최대화 (같은 fillStyle 연속 호출)
+    // Pass 1: 타일 단위 은은한 색 변주 — 대비를 크게 줄여 자연스럽게
+    //  대부분 기본색, 가끔 아주 살짝 밝거나 어두운 패치 (색상별 그룹핑으로 배치 유지)
     const byColor = new Map();
+    const push = (c, px, py, w, h) => {
+      if (!byColor.has(c)) byColor.set(c, []);
+      byColor.get(c).push([px, py, w, h]);
+    };
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const t = this.terrainGrid[y][x];
-        const c = (x + y) % 2 === 0 ? t.dark : t.color;
-        if (!byColor.has(c)) byColor.set(c, []);
-        byColor.get(c).push([x * TILE, y * TILE]);
+        const lt = this._lighten(t.color, 0.06);   // 아주 살짝 밝게
+        const dk = this._lighten(t.color, -0.05);  // 아주 살짝 어둡게
+        // 기본색 비중을 높여 거의 균일하게, 가끔만 변주
+        const tones = [t.color, t.color, t.color, lt, t.color, dk];
+        const seed = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+        const pick = tones[(seed >>> 4) % tones.length];
+        push(pick, x * TILE, y * TILE, TILE, TILE);
       }
     }
     for (const [color, rects] of byColor) {
       g.fillStyle(color, 1);
-      for (const [px, py] of rects) g.fillRect(px, py, TILE, TILE);
+      for (const [px, py, w, h] of rects) g.fillRect(px, py, w, h);
     }
 
-    // Pass 2: 지형 디테일 (색상별 그룹핑 유지, 10타일에 1개)
-    const details = { forest:[], desert:[], volcano:[], snow:[], river:[], swamp:[], plain:[] };
+    // Pass 2: 지형 디테일 — 해시 기반 난수로 무작위 배치 (정렬 패턴 제거)
+    const rng = (x, y, salt) => {
+      let h = ((x + 1) * 374761393 + (y + 1) * 668265263 + salt * 2246822519) >>> 0;
+      h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+      h = Math.imul(h ^ (h >>> 13), 3266489917) >>> 0;
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296; // 0..1
+    };
+    // ── 자연물: 한 번만 텍스처로 굽고 정적 스프라이트로 배치 ──
+    //  (매 프레임 수백 개 원·삼각형을 다시 그리지 않음 → 부드럽게 동작)
+    this.buildNatureTextures();
+    const oy = this._natureOriginY;
+    const place = (key, cx, cy) => this.add.image(cx, cy, key).setOrigin(0.5, oy).setDepth(1);
+    const density = { forest:0.13, swamp:0.10, plain:0.11, river:0.06, volcano:0.09, desert:0.08, snow:0.07 };
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        if ((x * 3 + y * 5) % 10 !== 0) continue;
         const t = this.terrainGrid[y][x];
+        if (rng(x, y, 1) > (density[t.id] ?? 0.10)) continue;
         const px = x * TILE, py = y * TILE;
-        const ox = (x * 11 + y * 7) % 24;
-        const oy = (x * 7  + y * 13) % 24;
-        details[t.id]?.push([px, py, ox, oy]);
-      }
-    }
-    const detailColors = {
-      forest:0x0d4d0d, desert:0x4a7c20, volcano:0xff4400,
-      snow:0xffffff, river:0x60a5fa, swamp:0x6a9a28, plain:0x3a6b28
-    };
-    for (const [tid, list] of Object.entries(details)) {
-      if (!list.length) continue;
-      g.fillStyle(detailColors[tid], 1);
-      for (const [px, py, ox, oy] of list) {
-        switch (tid) {
-          case 'forest':  g.fillRect(px+ox+10,py+oy+4,16,14); g.fillRect(px+ox+14,py+oy+18,8,18); break;
-          case 'desert':  g.fillRect(px+ox+14,py+oy+8,6,28);  g.fillRect(px+ox+6,py+oy+16,22,6);  break;
-          case 'volcano': g.fillRect(px+ox+10,py+oy+20,12,5); g.fillRect(px+ox+20,py+oy+12,5,12); break;
-          case 'snow':    g.fillRect(px+ox+14,py+oy+6,6,24);  g.fillRect(px+ox+6,py+oy+14,24,6);  break;
-          case 'river':   g.fillRect(px+4,py+oy+12,TILE-8,8); g.fillRect(px+4,py+oy+32,TILE-8,8); break;
-          case 'swamp':   g.fillRect(px+ox+10,py+oy+14,14,14);g.fillRect(px+ox+26,py+oy+24,10,10); break;
-          case 'plain':   g.fillRect(px+ox+4,py+oy+16,4,14);  g.fillRect(px+ox+16,py+oy+12,4,18); break;
+        const cx = px + 20 + Math.floor(rng(x, y, 2) * (TILE - 40));
+        const cy = py + 24 + Math.floor(rng(x, y, 3) * (TILE - 44));
+        const v = rng(x, y, 4);   // 종류 선택용
+        const r = rng(x, y, 5);   // 색·변형용
+        let key;
+        switch (t.id) {
+          case 'forest':  key = r < 0.45 ? 'nat_tree_autumn' : 'nat_tree_green'; break;
+          case 'desert':  key = v < 0.7 ? 'nat_cactus' : 'nat_rock'; break;
+          case 'volcano': key = v < 0.6 ? 'nat_lava' : 'nat_rock'; break;
+          case 'snow':    key = v < 0.7 ? 'nat_snow' : 'nat_rock'; break;
+          case 'river':   key = v < 0.5 ? 'nat_lily' : 'nat_reed'; break;
+          case 'swamp':   key = v < 0.6 ? 'nat_reed' : 'nat_grass'; break;
+          case 'plain':
+          default:
+            if (v < 0.66)      key = 'nat_grass';
+            else if (v < 0.80) key = 'nat_flower' + (Math.floor(r * 4) % 4);
+            else if (v < 0.92) key = r < 0.45 ? 'nat_tree_autumn' : 'nat_tree_green';
+            else               key = 'nat_rock';
+            break;
         }
+        place(key, cx, cy);
       }
     }
 
-    // Pass 3: 지형 경계선
-    g.fillStyle(0x000000, 1);
+    // Pass 3: 부드러운 바이옴 경계 (검은 선 → 어두운 반투명 얇은 선)
+    g.fillStyle(0x2a2018, 0.18);
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const id = this.terrainGrid[y][x].id;
-        if (this.terrainGrid[y]?.[x+1]?.id !== id) g.fillRect((x+1)*TILE-2, y*TILE, 4, TILE);
-        if (this.terrainGrid[y+1]?.[x]?.id !== id)  g.fillRect(x*TILE, (y+1)*TILE-2, TILE, 4);
+        if (this.terrainGrid[y]?.[x+1]?.id !== id) g.fillRect((x+1)*TILE-1, y*TILE, 2, TILE);
+        if (this.terrainGrid[y+1]?.[x]?.id !== id)  g.fillRect(x*TILE, (y+1)*TILE-1, TILE, 2);
       }
     }
+  }
+
+  // 자연물 텍스처를 한 번만 굽는다 (원점 기준으로 그린 뒤 2.2배 확대해 베이크)
+  buildNatureTextures() {
+    if (this._natureBuilt) return;
+    this._natureBuilt = true;
+    const W = 160, H = 180, CX = 80, CY = 110, S = 2.2;
+    this._natureOriginY = CY / H;
+    const bake = (key, draw) => {
+      if (this.textures.exists(key)) return;
+      const g = this.make.graphics({ add: false });
+      g.save(); g.translateCanvas(CX, CY); g.scaleCanvas(S, S);
+      draw(g);
+      g.restore();
+      g.generateTexture(key, W, H);
+      g.destroy();
+    };
+    const shadow = (g, cx, cy, w, h) => { g.fillStyle(0x000000, 0.12); g.fillEllipse(cx, cy, w, h); };
+
+    // 나무 (3겹 음영: 어두움→중간→하이라이트)
+    const tree = (g, pal) => {
+      shadow(g, 0, 16, 32, 11);
+      g.fillStyle(0x5a3c22, 1); g.fillRect(-3, 2, 6, 16);          // 줄기
+      g.fillStyle(0x7a5230, 1); g.fillRect(-3, 2, 3, 16);          // 줄기 밝음
+      g.fillStyle(pal.d, 1);
+      g.fillCircle(-10, -2, 12); g.fillCircle(10, -2, 12); g.fillCircle(0, -12, 13);
+      g.fillStyle(pal.m, 1);
+      g.fillCircle(-8, -4, 9); g.fillCircle(8, -4, 9); g.fillCircle(0, -13, 10);
+      g.fillStyle(pal.l, 1);
+      g.fillCircle(-4, -13, 5); g.fillCircle(4, -9, 4);
+    };
+    bake('nat_tree_green',  g => tree(g, { d: 0x276b27, m: 0x3d8c3d, l: 0x6cc154 }));
+    bake('nat_tree_autumn', g => tree(g, { d: 0xb5572f, m: 0xe28a3c, l: 0xf6bd63 }));
+
+    // 풀 다발
+    bake('nat_grass', g => {
+      g.fillStyle(0x3a7a2c, 1);
+      g.fillTriangle(-7, 6, -5, -6, -3, 6);
+      g.fillTriangle(2, 6, 5, -4, 8, 6);
+      g.fillStyle(0x68b945, 1);
+      g.fillTriangle(-2, 6, 0, -9, 2, 6);
+    });
+
+    // 선인장
+    bake('nat_cactus', g => {
+      shadow(g, 0, 13, 20, 7);
+      g.fillStyle(0x2f7d3a, 1);
+      g.fillRoundedRect(-5, -14, 10, 28, 4);
+      g.fillRoundedRect(-12, -5, 7, 6, 3); g.fillRect(-12, -3, 5, 11);
+      g.fillRoundedRect(5, -10, 7, 6, 3); g.fillRect(7, -10, 5, 14);
+      g.fillStyle(0x53a657, 1); g.fillRect(-3, -11, 3, 22);
+    });
+
+    // 바위
+    bake('nat_rock', g => {
+      shadow(g, 0, 8, 24, 8);
+      g.fillStyle(0x82828c, 1); g.fillCircle(-5, 0, 8); g.fillCircle(6, 1, 7);
+      g.fillStyle(0xb2b2bc, 1); g.fillCircle(-5, -3, 4); g.fillCircle(6, -2, 3);
+    });
+
+    // 눈더미
+    bake('nat_snow', g => {
+      shadow(g, 0, 7, 22, 7);
+      g.fillStyle(0xdce8f5, 1); g.fillCircle(-5, 0, 8); g.fillCircle(6, 1, 7);
+      g.fillStyle(0xffffff, 1); g.fillCircle(-5, -3, 4); g.fillCircle(6, -2, 3);
+    });
+
+    // 용암 바위
+    bake('nat_lava', g => {
+      shadow(g, 0, 8, 22, 7);
+      g.fillStyle(0x4a3026, 1); g.fillCircle(-4, 0, 8); g.fillCircle(6, 1, 6);
+      g.fillStyle(0x6b4636, 1); g.fillCircle(-4, -2, 4);
+      g.fillStyle(0xff6a1a, 1); g.fillRect(-3, -1, 10, 3); g.fillRect(2, -5, 3, 9);
+      g.fillStyle(0xffd23f, 1); g.fillRect(-1, 0, 5, 1.5);
+    });
+
+    // 갈대
+    bake('nat_reed', g => {
+      g.fillStyle(0x2f7d3a, 1);
+      g.fillRect(-1, -14, 2, 18); g.fillRect(-5, -9, 2, 13); g.fillRect(4, -10, 2, 14);
+      g.fillStyle(0x8a5a2a, 1);
+      g.fillEllipse(0, -14, 4, 7); g.fillEllipse(5, -10, 4, 7);
+    });
+
+    // 수련잎
+    bake('nat_lily', g => {
+      g.fillStyle(0x2f8f4f, 1); g.fillCircle(0, 0, 8);
+      g.fillStyle(0x6fb8d8, 1); g.fillTriangle(0, 0, 9, -5, 9, 5);
+      g.fillStyle(0x49a96a, 1); g.fillCircle(-2, -2, 3);
+      g.fillStyle(0xff8fb0, 1); g.fillCircle(0, 0, 2.6);
+      g.fillStyle(0xffd6e4, 1); g.fillCircle(0, 0, 1.2);
+    });
+
+    // 꽃 4색
+    const fcols = [0xff6f91, 0xffd23f, 0xff9f4d, 0xe07bff];
+    fcols.forEach((c, i) => bake('nat_flower' + i, g => {
+      g.fillStyle(0x3a7a2c, 1); g.fillRect(-1, 0, 2, 7);
+      g.fillStyle(c, 1);
+      g.fillCircle(-3, -2, 2.5); g.fillCircle(3, -2, 2.5);
+      g.fillCircle(0, -5, 2.5); g.fillCircle(0, 1, 2.5);
+      g.fillStyle(0xfff3b0, 1); g.fillCircle(0, -2, 1.8);
+    }));
   }
 
   terrainAt(x, y) {
@@ -2288,14 +2418,37 @@ class ArenaScene extends Phaser.Scene {
   addIndividualSprite(individual, group) {
     if (this.individualSprites.has(individual.id)) return;
     const key = this.createCreatureTexture(getBodyColor(individual));
-    const scale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
-    const sprite = this.add.image(individual.x, individual.y, key).setScale(scale);
+    const baseScale = clamp(0.55 + individual.stats.hp / 100 * 0.40, 0.60, 1.55);
+    const sprite = this.add.image(individual.x, individual.y, key).setScale(baseScale);
     this.groupLayer.add(sprite);
-    this.individualSprites.set(individual.id, { sprite, groupId: group.id });
+    // 개체별 고유 위상 → 통통 튀는 타이밍이 제각각이라 자연스러움
+    const idStr = String(individual.id);
+    let h = 0; for (let i = 0; i < idStr.length; i++) h = (h * 31 + idStr.charCodeAt(i)) & 0xffff;
+    const phase = (h / 0xffff) * Math.PI * 2;
+    this.individualSprites.set(individual.id, { sprite, groupId: group.id, baseScale, phase });
   }
 
   ensureSprites(group) {
     for (const individual of group.individuals) this.addIndividualSprite(individual, group);
+  }
+
+  // 먹이 = 노란 사과 텍스처 (한 번만 생성, 모든 먹이가 공유 → 배치 렌더)
+  createFoodTexture() {
+    const key = 'food_apple';
+    if (this.textures.exists(key)) return key;
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(0x000000, 0.16); g.fillEllipse(12, 21, 16, 5);   // 바닥 그림자
+    g.fillStyle(0xcf9a1c, 1);   g.fillCircle(8, 13, 7); g.fillCircle(16, 13, 7);  // 외곽(어두움)
+    g.fillStyle(0xf6cb38, 1);   g.fillCircle(8, 12, 6); g.fillCircle(16, 12, 6);  // 사과 두 볼(노랑)
+    g.fillStyle(0xf6cb38, 1);   g.fillRect(8, 7, 8, 11);                          // 가운데 메움
+    g.fillStyle(0xfde07a, 1);   g.fillEllipse(9, 9, 6, 6);       // 상단 광택
+    g.fillStyle(0xffffff, 0.9); g.fillCircle(8, 8, 2);           // 하이라이트
+    g.fillStyle(0x6b3f1f, 1);   g.fillRect(11, 3, 2, 5);         // 꼭지
+    g.fillStyle(0x2f7d2f, 1);   g.fillEllipse(16, 5, 9, 5);      // 잎(어두움)
+    g.fillStyle(0x57b347, 1);   g.fillEllipse(16, 4, 7, 4);      // 잎(밝음)
+    g.generateTexture(key, 24, 24);
+    g.destroy();
+    return key;
   }
 
   spawnFood() {
@@ -2308,7 +2461,9 @@ class ArenaScene extends Phaser.Scene {
       terrain = this.terrainAt(x, y);
     } while (terrain.id === 'river');
     const amount = Math.floor((18 + Math.random() * 18) * terrain.food);
-    const sprite = this.add.circle(x, y, 10, 0xfacc15).setDepth(1);
+    const key = this.createFoodTexture();
+    const scale = clamp(0.62 + amount / 46, 0.62, 1.25);
+    const sprite = this.add.image(x, y, key).setDepth(1).setScale(scale);
     this.foods.push({ x, y, amount, sprite });
   }
 
@@ -2510,13 +2665,24 @@ class ArenaScene extends Phaser.Scene {
 
   syncSprites() {
     const live = new Set();
+    const t = (this.elapsed || 0) / 1000;
+    const sg = this.shadowGraphics;
+    if (sg) { sg.clear(); sg.fillStyle(0x000000, 0.24); }
     for (const group of this.groups) {
       for (const individual of group.individuals) {
         live.add(individual.id);
         if (!this.individualSprites.has(individual.id)) this.addIndividualSprite(individual, group);
         const entry = this.individualSprites.get(individual.id);
+        const bs = entry.baseScale;
+        // 통통 튀는 젤리: 위로 살짝 호핑 + 사인파 스쿼시(가로↔세로)
+        const s = Math.sin(t * 4.2 + entry.phase);
+        const hop = Math.max(0, s);                 // 위로 솟는 구간만
         entry.sprite.x = individual.x;
-        entry.sprite.y = individual.y;
+        entry.sprite.y = individual.y - hop * 4 * bs;
+        entry.sprite.scaleX = bs * (1 - 0.08 * s);
+        entry.sprite.scaleY = bs * (1 + 0.08 * s);
+        // 바닥 그림자(발밑 고정) — 점프할수록 작아져 입체감
+        if (sg) sg.fillEllipse(individual.x, individual.y + 25 * bs, (30 - hop * 7) * bs, (11 - hop * 3) * bs);
       }
     }
     for (const [id, entry] of this.individualSprites.entries()) {
