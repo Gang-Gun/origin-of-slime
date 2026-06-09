@@ -2682,7 +2682,7 @@ class ArenaScene extends Phaser.Scene {
         entry.sprite.scaleX = bs * (1 - 0.08 * s);
         entry.sprite.scaleY = bs * (1 + 0.08 * s);
         // 바닥 그림자(발밑 고정) — 점프할수록 작아져 입체감
-        if (sg) sg.fillEllipse(individual.x, individual.y + 25 * bs, (30 - hop * 7) * bs, (11 - hop * 3) * bs);
+        if (sg) sg.fillEllipse(individual.x, individual.y + 20 * bs, (30 - hop * 7) * bs, (11 - hop * 3) * bs);
       }
     }
     for (const [id, entry] of this.individualSprites.entries()) {
