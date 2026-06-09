@@ -634,6 +634,22 @@ canvas { display: block; image-rendering: pixelated; }
 #tutorial-arrow { position:absolute; font-size:26px; pointer-events:none; animation:arrowBob .75s ease-in-out infinite; filter:drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
 @keyframes arrowBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
 
+/* 이동·식량 단계: 설명을 읽은 뒤 슬림 띠로 접어 화면 가림 최소화 */
+#tutorial-card.tut-playing {
+  top:10px !important; left:50% !important; transform:translateX(-50%) !important;
+  width:auto !important; max-width:92vw; padding:8px 16px !important; opacity:.95;
+  transition:opacity .25s ease, padding .2s ease;
+}
+#tutorial-card.tut-playing .tut-step,
+#tutorial-card.tut-playing .tut-ico,
+#tutorial-card.tut-playing .tut-title,
+#tutorial-card.tut-playing .tut-desc,
+#tutorial-card.tut-playing .tut-actions { display:none !important; }
+#tutorial-card.tut-playing .tut-cond {
+  margin-top:0 !important; font-style:normal !important; font-size:13px !important;
+  color:var(--ink) !important; white-space:nowrap; font-weight:800;
+}
+
 /* ─── 방향 전환 시 HUD 부드러운 전환 ─── */
 #bottom-bar {
   transition: top 0.35s ease, left 0.35s ease, right 0.35s ease,
@@ -4079,6 +4095,7 @@ const Tutorial = (() => {
   let scene = null;
   let checkInterval = null;
   let _active = false;
+  let playTimer = null;   // 인터랙티브 단계에서 설명창을 접는 타이머
 
   function getEl(sel) { return sel ? document.querySelector(sel) : null; }
 
@@ -4097,6 +4114,12 @@ const Tutorial = (() => {
     const cw = card.offsetWidth || 320, ch = card.offsetHeight || 200;
 
     if (!rect) {
+      if (step.noMask && step.cond) {
+        // 이동·식량 같은 인터랙티브 단계: 상단에 배치해 중앙 플레이 영역을 비움
+        card.style.left = `${(vw - cw) / 2}px`;
+        card.style.top  = `10px`;
+        return;
+      }
       // 중앙
       card.style.left = `${(vw - cw) / 2}px`;
       card.style.top  = `${(vh - ch) / 2}px`;
@@ -4166,6 +4189,7 @@ const Tutorial = (() => {
 
   function render() {
     const step = STEPS[current];
+    document.getElementById('tutorial-card').classList.remove('tut-playing');
     document.getElementById('tut-step-label').textContent = `${current+1} / ${STEPS.length}`;
     document.getElementById('tut-ico').textContent   = step.ico;
     document.getElementById('tut-title').textContent = step.title;
@@ -4193,6 +4217,11 @@ const Tutorial = (() => {
         nextBtn.disabled = false;
         nextBtn.style.opacity = '1';
         document.getElementById('tut-cond').textContent = '✅ 완료! 다음을 눌러주세요';
+        // 접혀 있던 설명창을 다시 펼쳐 '다음' 버튼이 보이게
+        clearTimeout(playTimer);
+        const card = document.getElementById('tutorial-card');
+        card.classList.remove('tut-playing');
+        positionCard(step);
         clearInterval(checkInterval);
       }
     }, 300);
@@ -4206,6 +4235,14 @@ const Tutorial = (() => {
     _active = true;
     render();
     startConditionCheck();
+    // 인터랙티브 단계: 설명을 잠깐 보여준 뒤 슬림 띠로 접어 화면을 비움
+    clearTimeout(playTimer);
+    const stepNow = STEPS[current];
+    if (stepNow.noMask && stepNow.cond) {
+      playTimer = setTimeout(() => {
+        if (_active && current === idx) document.getElementById('tutorial-card').classList.add('tut-playing');
+      }, 2600);
+    }
     // 이동 추적 (step 1)
     if (current === 1 && scene && !scene._tutorialMovePatch) {
       scene._tutorialMovePatch = true;
@@ -4240,6 +4277,8 @@ const Tutorial = (() => {
   function end(fromSkip = false) {
     _active = false;
     clearInterval(checkInterval);
+    clearTimeout(playTimer);
+    document.getElementById('tutorial-card').classList.remove('tut-playing');
     localStorage.setItem('gpa_tutorial_done', '1');
 
     if (fromSkip) {
