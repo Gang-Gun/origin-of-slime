@@ -409,16 +409,21 @@ canvas { display: block; image-rendering: pixelated; }
 /* (event-message 아래 재정의됨) */
 
 /* 토스트 도전과제 알림 (우측 슬라이드) */
-#toast-wrap { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 25; pointer-events: none; }
+/* 토스트 스택: 돌연변이=왼쪽아래 / 도전과제=오른쪽아래 (작게) */
+.toast-stack { position: absolute; display: flex; flex-direction: column; gap: 5px; z-index: 25; pointer-events: none; max-width: 46vw; }
+#toast-mut { left: 8px;  bottom: 88px; align-items: flex-start; }
+#toast-ach { right: 8px; bottom: 88px; align-items: flex-end; }
 /* ─── 토스트 ─── */
 .toast {
-  font-family:'Jua',sans-serif; font-size:14px; color:var(--ink);
+  font-family:'Jua',sans-serif; font-size:11.5px; color:var(--ink);
   background: linear-gradient(135deg, rgba(255,252,245,.95), rgba(255,213,80,.25));
-  border:2px solid rgba(255,255,255,.85); border-radius:14px; padding:9px 16px;
-  box-shadow:0 6px 16px rgba(100,75,55,.22), inset 0 1px 0 rgba(255,255,255,.95);
-  text-align:center; backdrop-filter:blur(8px);
-  animation: toastIn .4s cubic-bezier(.34,1.56,.64,1), toastOut .4s ease 3.2s forwards;
+  border:2px solid rgba(255,255,255,.85); border-radius:12px; padding:5px 10px;
+  box-shadow:0 4px 10px rgba(100,75,55,.22), inset 0 1px 0 rgba(255,255,255,.95);
+  text-align:center; backdrop-filter:blur(8px); white-space:nowrap; line-height:1.3;
+  animation: toastIn .35s cubic-bezier(.34,1.56,.64,1), toastOut .4s ease 3.2s forwards;
 }
+.toast-mut { color: var(--px-green-d, #2a6328); }
+.toast-ach { color: var(--px-gold-d, #b5731c); }
 @keyframes toastIn  { from{transform:translateY(-24px) scale(.9);opacity:0} to{transform:translateY(0) scale(1);opacity:1} }
 @keyframes toastOut { to{transform:translateY(-16px) scale(.9);opacity:0} }
 
@@ -948,7 +953,8 @@ body { image-rendering: pixelated; }
 
   <div id="battle-vignette"></div>
   <div id="battle-banner">⚔️ 전쟁 중</div>
-  <div id="toast-wrap"></div>
+  <div id="toast-mut" class="toast-stack"></div>
+  <div id="toast-ach" class="toast-stack"></div>
   <div id="event-message"></div>
 </div>
 <div id="joystick-dom"><div id="joystick-knob"></div></div>
@@ -2969,7 +2975,7 @@ class ArenaScene extends Phaser.Scene {
       try {
         if (ach.check(g, this.elapsed, this.achieveData)) {
           this.achievements.add(ach.id);
-          this.showToast(`🏆 ${ach.name} +${ach.bonus}`);
+          this.showToast(`🏆 ${ach.name} +${ach.bonus}`, 'ach');
           Audio.sfxAchieve();
           this.cameras.main.flash(200, 255, 240, 180);
         }
@@ -3149,7 +3155,7 @@ class ArenaScene extends Phaser.Scene {
         const m = mutationById(id);
         if (!m) return;
         const ico = m.type === 'good' ? '✅' : m.type === 'bad' ? '❌' : '🔵';
-        setTimeout(() => this.showToast(`🧬 ${ico} ${m.name}`), i * 350);
+        setTimeout(() => this.showToast(`🧬 ${ico} ${m.name}`, 'mut'), i * 350);
       });
     }
   }
@@ -3194,10 +3200,12 @@ class ArenaScene extends Phaser.Scene {
   }
 
   // 도전과제 등 토스트 알림
-  showToast(text) {
-    const wrap = document.getElementById('toast-wrap');
+  showToast(text, kind = 'ach') {
+    // kind: 'mut'=돌연변이(왼쪽 아래) / 'ach'=도전과제(오른쪽 아래)
+    const wrap = document.getElementById(kind === 'mut' ? 'toast-mut' : 'toast-ach');
+    if (!wrap) return;
     const el = document.createElement('div');
-    el.className = 'toast'; el.textContent = text;
+    el.className = 'toast toast-' + kind; el.textContent = text;
     wrap.appendChild(el);
     setTimeout(() => el.remove(), 3700);
   }
