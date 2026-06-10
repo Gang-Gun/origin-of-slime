@@ -1148,8 +1148,10 @@ function toggleLeaderboard() {
 
 // ── 점수 등록 ────────────────────────────────────────
 let _pendingScore = null; // openScoreSubmit() 호출 시 임시 저장
+let _scoreSubmitted = false; // 게임당 1회만 등록 (리로드 시 초기화)
 
 function openScoreSubmit({ score, generations, mutations }) {
+  if (_scoreSubmitted) return; // 이미 등록한 게임
   _pendingScore = { score, generations, mutations };
   document.getElementById('lb-score-preview').textContent = score.toLocaleString() + '점';
   document.getElementById('lb-sub-preview').textContent =
@@ -1186,6 +1188,9 @@ async function submitScoreFromModal() {
       date,
       timestamp:   firebase.firestore.FieldValue.serverTimestamp(),
     });
+    _scoreSubmitted = true; // 게임당 1회 제한
+    const regBtn = document.getElementById('result-register-btn');
+    if (regBtn) { regBtn.disabled = true; regBtn.textContent = '✅ 등록 완료'; regBtn.style.opacity = '0.5'; }
     document.getElementById('lb-feedback').textContent = '✅ 등록 완료!';
     setTimeout(() => closeScoreSubmit(), 1200);
   } catch (e) {
@@ -2210,8 +2215,9 @@ class ArenaScene extends Phaser.Scene {
     this.setupKeyboard();
     // 방향 전환 시 Phaser 카메라 뷰포트 자동 갱신
     this.scale.on('resize', this._onSceneResize, this);
-    document.getElementById('breed-btn').addEventListener('click', () => this.handleBreed());
-    document.getElementById('flee-btn').addEventListener('click', () => this.handleFlee());
+    // pointerdown 사용: 멀티터치 중(조이스틱 유지) click 합성이 막혀도 즉시 동작
+    document.getElementById('breed-btn').addEventListener('pointerdown', e => { e.preventDefault(); this.handleBreed(); });
+    document.getElementById('flee-btn').addEventListener('pointerdown', e => { e.preventDefault(); this.handleFlee(); });
     this.showMessage('🌱 슬라임 집단을 이끌고\n먹이를 모으세요!');
     // 튜토리얼 자동 시작 (첫 게임)
     if (!localStorage.getItem('gpa_tutorial_done')) {
@@ -2637,6 +2643,7 @@ class ArenaScene extends Phaser.Scene {
   }
 
   setupJoystick() {
+    this.input.addPointer(2); // 멀티터치: 조이스틱 + 버튼 동시 입력 허용
     this.joystick = {
       active: false,
       pointerId: null,
@@ -3655,7 +3662,7 @@ class ArenaScene extends Phaser.Scene {
       </div>
       <div class="score">${score.toLocaleString()}점</div>
       <div style="text-align:center;margin-top:12px">
-        <button class="big-btn sky" type="button"
+        <button id="result-register-btn" class="big-btn sky" type="button"
           style="font-size:14px;padding:10px 24px"
           onclick="window._arenaScene?._endScoreData && openScoreSubmit(window._arenaScene._endScoreData)">
           🏆 기록 등록
