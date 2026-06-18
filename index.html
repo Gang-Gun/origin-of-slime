@@ -42,6 +42,9 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 button { font: inherit; cursor: pointer; }
+/* 전체화면 진입 시 기본 검정 backdrop 깜빡임 제거 → 게임 배경색으로 */
+html:fullscreen { background: #c5eebc; }
+:fullscreen::backdrop, ::backdrop { background: #c5eebc; }
 #game-container { width: 100vw; height: 100vh; }
 canvas { display: block; image-rendering: pixelated; }
 
